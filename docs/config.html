@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+  <title>config.coffee</title>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, target-densitydpi=160dpi, initial-scale=1.0; maximum-scale=1.0; user-scalable=0;">
+  <link rel="stylesheet" media="all" href="docco.css" />
+</head>
+<body>
+  <div id="container">
+    <div id="background"></div>
+    
+      <ul id="jump_to">
+        <li>
+          <a class="large" href="javascript:void(0);">Jump To &hellip;</a>
+          <a class="small" href="javascript:void(0);">+</a>
+          <div id="jump_wrapper">
+          <div id="jump_page">
+            
+              
+              <a class="source" href="config.html">
+                config.coffee
+              </a>
+            
+              
+              <a class="source" href="index.html">
+                index.coffee
+              </a>
+            
+          </div>
+        </li>
+      </ul>
+    
+    <ul class="sections">
+        
+          <li id="title">
+              <div class="annotation">
+                  <h1>config.coffee</h1>
+              </div>
+          </li>
+        
+        
+        
+        <li id="section-1">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-1">&#182;</a>
+              </div>
+              <h3 id="module-configuration">Module Configuration</h3>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-2">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-2">&#182;</a>
+              </div>
+              <p>The code contained herein is all example code and shouldn’t be used verbatim.
+The example in this case is modified from the mimosa-minify module.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>
+<span class="hljs-string">"use strict"</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-3">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-3">&#182;</a>
+              </div>
+              <p>The defaults function should return a JSON object containing the default
+config for your module. If your module has no config, the function can be
+removed or return null. Mimosa uses this function when applying default
+configuration to a user’s config.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>
+<span class="hljs-built_in">exports</span>.<span class="hljs-function"><span class="hljs-title">defaults</span> = -&gt;</span>
+  <span class="hljs-attribute">minify</span>:
+    <span class="hljs-attribute">exclude</span>:[<span class="hljs-string">"\\.min\\."</span>]</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-4">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-4">&#182;</a>
+              </div>
+              <p>The placeholder function should return a string that represents the
+mimosa-config placeholder for your configuration defaults including
+explanations for each config setting where appropriate.  The content
+of the string should be all commented out. If you have no config,
+the function can be removed or can return null.  This function is called
+when Mimosa is creating an initial mimosa-config using ‘mimosa new’ or
+‘mimosa config’</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>
+<span class="hljs-built_in">exports</span>.<span class="hljs-function"><span class="hljs-title">placeholder</span> = -&gt;</span>
+  <span class="hljs-string">"""
+  \t
+
+</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-5">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-5">&#182;</a>
+              </div>
+              <p>minify:                  # Configuration for non-require minification/compression via uglify
+using the —minify flag.
+exclude:[/\.min\./]    # List of regexes to exclude files when running minification.
+Any path with “.min.” in its name, like jquery.min.js, is assumed to
+already be minified and is ignored by default. Override this property
+if you have other files that you’d like to exempt from minification.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="hljs-string">"""
+
+</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-6">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-6">&#182;</a>
+              </div>
+              <p>The validate function takes a config object (which is the entire
+mimosa-config) and a validators object which contains several useful
+validation methods. Using custom validation and validation provided
+via the validators, the validate method should find the module specific
+config, validate the settings and return a list of strings that are
+validation error messages. If there are no errors, return an empty
+array or return nothing.  Mimosa uses this function when Mimosa starts
+up to ensure the configuration has been set properly.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>
+<span class="hljs-built_in">exports</span>.<span class="hljs-function"><span class="hljs-title">validate</span> = <span class="hljs-params">(config, validators)</span> -&gt;</span>
+  errors = []
+  <span class="hljs-keyword">if</span> validators.ifExistsIsObject(errors, <span class="hljs-string">"minify config"</span>, config.minify)
+    <span class="hljs-keyword">if</span> validators.ifExistsIsArray(errors, <span class="hljs-string">"minify.exclude"</span>, config.minify.exclude)
+      <span class="hljs-keyword">for</span> ex <span class="hljs-keyword">in</span> config.minify.exclude
+        <span class="hljs-keyword">unless</span> <span class="hljs-keyword">typeof</span> ex <span class="hljs-keyword">is</span> <span class="hljs-string">"string"</span>
+          errors.push <span class="hljs-string">"minify.exclude must be an array of strings"</span>
+          <span class="hljs-keyword">break</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-7">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-7">&#182;</a>
+              </div>
+              <p>The validate function is also an opportunity to do configuration massaging,
+for instance, turning a list of strings into a single RegExp.  Changes
+made to the config inside validate are permament and carried throughout
+the currently running Mimosa process.</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>
+  <span class="hljs-keyword">if</span> errors.length <span class="hljs-keyword">is</span> <span class="hljs-number">0</span> <span class="hljs-keyword">and</span> config.minify.exclude?.length &gt; <span class="hljs-number">0</span>
+    config.minify.exclude = <span class="hljs-keyword">new</span> RegExp config.minify.exclude.join(<span class="hljs-string">"|"</span>), <span class="hljs-string">"i"</span>
+
+  errors</pre></div></div>
+            
+        </li>
+        
+    </ul>
+  </div>
+</body>
+</html>

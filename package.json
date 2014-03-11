@@ -1,0 +1,42 @@
+{
+  "name": "mimosa-fubu",
+  "version": "0.0.1",
+  "homepage": "http://www.mimosa.io",
+  "author": "Bob Pace",
+  "description": "handles fubu asset pipeline concerns",
+  "contributors": [
+    {
+      "name": "Bob Pace",
+      "email": "bob.pace@gmail.com"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "YOUR REPO URL"
+  },
+  "keywords": [
+    "mimosa",
+    "mmodule",
+    "fubu"
+  ],
+  "dependencies": {
+    "logmimosa": "0.5.0",
+    "chokidar": "0.6.3",
+    "wrench": "1.5.1",
+    "lodash": "1.3.1"
+  },
+  "devDependencies": {
+    "coffee-script": "latest",
+    "mocha": "~1.1.0",
+    "chai": "~1.0.3"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=0.10"
+  },
+  "main": "./lib/index",
+  "scripts": {
+    "prepublish": "mimosa build",
+    "test": "mocha --compilers coffee:coffee-script/register --reporter min --colors"
+  }
+}
