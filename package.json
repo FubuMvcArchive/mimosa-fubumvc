@@ -28,7 +28,8 @@
   "devDependencies": {
     "coffee-script": "latest",
     "mocha": "~1.1.0",
-    "chai": "~1.0.3"
+    "chai": "~1.0.3",
+    "rewire": "~1.0.3"
   },
   "license": "MIT",
   "engines": {
@@ -37,6 +38,6 @@
   "main": "./lib/index",
   "scripts": {
     "prepublish": "mimosa build",
-    "test": "mocha --compilers coffee:coffee-script/register --reporter min --colors"
+    "test": "mocha --compilers coffee:coffee-script/register --reporter min --require coffee-script --colors"
   }
 }

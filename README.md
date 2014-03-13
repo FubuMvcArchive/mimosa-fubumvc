@@ -13,6 +13,21 @@ Fubu
 ===========
 ## Overview
 
+Asset pipeline for fubu
+
+Define where your main project is located, aka "src/myproject"
+
+Allows you to set your asset files side by side your controllers and still have them get picked up
+
+Everything gets pulled into "src/myproject/assets" for precompiled bits, and post compilation things end up at "src/myproject/public"
+
+Goals:
+Automatically watch _content folder for backwards compatibility
+support arbitrary number of additional folders to behave the same way
+support side by side files next to .cs files anywhere in the application
+support content that needs to come from bottles
+javascript resources pull through bower, somehow sort that out with bottles
+
 For more information regarding Mimosa, see http://mimosa.io
 
 ## Usage
