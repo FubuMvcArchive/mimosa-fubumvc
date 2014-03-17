@@ -35,7 +35,6 @@ initFiles = (useCoffee = false) ->
     .map (f) -> bliss.render f, options
     .map (f) -> f.trim()
     .value()
-  logger.info options.name
   fileWithContents = _.zip(files, contents)
 
   copyContents pair for pair in fileWithContents
@@ -51,6 +50,7 @@ registerCommand = (program, retrieveConfig) ->
     .command('fubu:init')
     .description("creates simple mimosa.config and bower.json for you, execute from within your mvcapp directory")
     .action (opts)->
+      #todo:
       initFiles()
 
 module.exports = {importAssets, cleanAssets, registerCommand}
