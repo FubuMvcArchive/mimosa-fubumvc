@@ -1,0 +1,6 @@
+@!(options)
+{
+  "name": "@options.name",
+  "dependencies": {
+  }
+}

@@ -1,0 +1,24 @@
+@!()
+exports.config = {
+  "modules": [
+    "copy",
+    "jshint",
+    "csslint",
+    "require",
+    "minify-js",
+    "minify-css",
+    "bower",
+    "mimosa-fubu"
+  ],
+
+  "watch": {
+    sourceDir: "assets",
+    compiledDir: "public",
+    javascriptDir: "scripts"
+  },
+
+  "vendor": {
+    javascripts: "scripts/vendor",
+    stylesheets: "styles/vendor"
+  }
+}

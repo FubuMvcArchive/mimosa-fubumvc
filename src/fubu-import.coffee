@@ -6,10 +6,11 @@ watch = require 'chokidar'
 wrench = require 'wrench'
 logger = require 'logmimosa'
 _ = require 'lodash'
-
-#create necessary files
-#mimosa.config
-#bower.json
+Bliss = require 'bliss'
+bliss = new Bliss
+  ext: ".bliss"
+  cacheEnabled: false,
+  context: {}
 
 importAssets = (mimosaConfig, options, next) ->
   next()
@@ -17,53 +18,39 @@ importAssets = (mimosaConfig, options, next) ->
 cleanAssets = (mimosaConfig, options, next) ->
   next()
 
-files =
-  "mimosa.config": ->
-    """
-    exports.config =
-      modules: [
-        "copy",
-        "jshint",
-        "csslint",
-        "require",
-        "minify-js",
-        "minify-css",
-        "bower",
-        "mimosa-fubu"
-      ]
+relativeToThisFile = (filePath, dirname) ->
+  dirname ?= __dirname
+  path.join dirname, filePath
 
-      watch:
-        sourceDir: "assets"
-        compiledDir: "public"
-        javascriptDir: "scripts"
+makeOptions = ->
+  options =
+    name: path.basename __dirname
 
-      vendor:
-        javascripts: "scripts/vendor"
-        stylesheets: "styles/vendor"
-    """
-  "bower.json": (name) ->
-    """
-    {
-      "name": "#{name}",
-      "dependencies": {
-      }
-    }
-    """
+initFiles = (useCoffee = false) ->
+  options = makeOptions()
+  ext = if useCoffee then "coffee" else "js"
+  files = ["bower.json", "mimosa-config.#{ext}"]
+  contents = _.chain files
+    .map (f) -> relativeToThisFile "../fubu-import-templates/#{f}"
+    .map (f) -> bliss.render f, options
+    .map (f) -> f.trim()
+    .value()
+  logger.info options.name
+  fileWithContents = _.zip(files, contents)
 
-test = ->
-  _.each files, (getContents, fileName) ->
-    unless fs.existsSync fileName
-      fs.writeFileSync fileName, getContents()
+  copyContents pair for pair in fileWithContents
+
+copyContents = (pair) ->
+  [fileName, contents] = pair
+  unless fs.existsSync fileName
+    logger.info "creating #{fileName}"
+    fs.writeFileSync fileName, contents
 
 registerCommand = (program, retrieveConfig) ->
   program
     .command('fubu:init')
     .description("creates simple mimosa.config and bower.json for you, execute from within your mvcapp directory")
     .action (opts)->
-      logger.info "running command"
-      test()
+      initFiles()
 
-module.exports =
-  importAssets: importAssets
-  cleanAssets: cleanAssets
-  registerCommand: registerCommand
+module.exports = {importAssets, cleanAssets, registerCommand}
