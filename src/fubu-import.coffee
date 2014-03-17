@@ -26,7 +26,8 @@ makeOptions = ->
   options =
     name: path.basename __dirname
 
-initFiles = (useCoffee = false) ->
+initFiles = (flags = false) ->
+  useCoffee = flags == "-c"
   options = makeOptions()
   ext = if useCoffee then "coffee" else "js"
   files = ["bower.json", "mimosa-config.#{ext}"]
@@ -48,9 +49,8 @@ copyContents = (pair) ->
 registerCommand = (program, retrieveConfig) ->
   program
     .command('fubu:init')
-    .description("creates simple mimosa.config and bower.json for you, execute from within your mvcapp directory")
+    .description("scaffolds initial mimosa files, use -c for coffeescript")
     .action (opts)->
-      #todo:
-      initFiles()
+      initFiles(opts)
 
 module.exports = {importAssets, cleanAssets, registerCommand}

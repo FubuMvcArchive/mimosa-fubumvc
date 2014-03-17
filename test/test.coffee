@@ -30,15 +30,21 @@ describe "relative paths", ->
 describe "fubu:init command", ->
   initFiles = fubuImport.__get__ "initFiles"
 
-  it "writes files", ->
+  writesFiles = (output, flags) ->
     writtenFiles = []
     fsMock =
       existsSync: (fileName) ->
         false
       writeFileSync: (fileName) -> writtenFiles.push fileName
     fubuImport.__set__ "fs", fsMock
-    initFiles()
-    writtenFiles.should.eql ["bower.json", "mimosa-config.js"]
+    initFiles(flags)
+    writtenFiles.should.eql output
+
+  it "writes files", ->
+    writesFiles ["bower.json", "mimosa-config.js"]
+
+  it "uses .coffee extension for files when -c flag is passed", ->
+    writesFiles ["bower.json", "mimosa-config.coffee"], "-c"
 
   it "only writes files if they don't exist already", ->
     fsMock =
