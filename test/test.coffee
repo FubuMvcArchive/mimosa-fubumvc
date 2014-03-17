@@ -3,6 +3,7 @@ chai = require("chai")
 fubuImport = rewire("../lib/fubu-import.js")
 chai.should()
 _ = require("lodash")
+path = require 'path'
 
 describe "fubu-import module", ->
   rawFubuImport = require ("../lib/fubu-import.js")
@@ -10,7 +11,6 @@ describe "fubu-import module", ->
     functions = ["importAssets", "cleanAssets", "registerCommand"]
     ensureIsFunction = (functionName) ->
       it "should export #{functionName}", ->
-        rawFubuImport.should.have.property
         (typeof rawFubuImport[functionName]).should.equal("function")
 
     ensureIsFunction functionName for functionName in functions
@@ -23,9 +23,10 @@ describe "fubu-import module", ->
 describe "relative paths", ->
   relativeToThisFile = fubuImport.__get__ "relativeToThisFile"
   it "can be provided by directory", ->
-    fakeDirname = "path\\to\\file"
+    sep = path.sep
+    fakeDirname = "path#{sep}to#{sep}file"
     fileName = "test.txt"
-    (relativeToThisFile fileName, fakeDirname).should.equal "#{fakeDirname}\\#{fileName}"
+    (relativeToThisFile fileName, fakeDirname).should.equal "#{fakeDirname}#{sep}#{fileName}"
 
 describe "fubu:init command", ->
   initFiles = fubuImport.__get__ "initFiles"

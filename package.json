@@ -1,18 +1,18 @@
 {
-  "name": "mimosa-fubu",
+  "name": "mimosa-fubumvc",
   "version": "0.0.1",
-  "homepage": "http://www.mimosa.io",
-  "author": "Bob Pace",
-  "description": "handles fubu asset pipeline concerns",
+  "homepage": "http://fubuworld.com",
+  "author": "FubuMVC",
+  "description": "FubuMVC asset pipeline conventions for Mimosa",
   "contributors": [
     {
-      "name": "Bob Pace",
-      "email": "bob.pace@gmail.com"
+      "name": "FubuMVC",
+      "email": "fubumvc-devel@googlegroups.com"
     }
   ],
   "repository": {
     "type": "git",
-    "url": "YOUR REPO URL"
+    "url": "http://github.com/DarthFubuMVC/mimosa-fubumvc"
   },
   "keywords": [
     "mimosa",
