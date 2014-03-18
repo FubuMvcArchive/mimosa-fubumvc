@@ -7,6 +7,7 @@ wrench = require 'wrench'
 logger = require 'logmimosa'
 _ = require 'lodash'
 mkdirp = require 'mkdirp'
+parseString = require('xml2js').parseString
 Bliss = require 'bliss'
 bliss = new Bliss
   ext: ".bliss"
@@ -64,6 +65,10 @@ copyContents = (pair) ->
     fs.writeFileSync fileName, contents
 
 parseXml = (filePath) ->
-  ""
+  contents = fs.readFileSync filePath
+  result = {}
+  parseString contents, (err, output) ->
+    result = output
+  result
 
 module.exports = {importAssets, cleanAssets, setupFileSystem}

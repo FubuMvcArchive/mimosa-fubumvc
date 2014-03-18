@@ -6,8 +6,8 @@ _ = require("lodash")
 path = require 'path'
 
 describe "fubu-import module", ->
-  rawFubuImport = require ("../lib/fubu-import.js")
   describe 'exports', ->
+    rawFubuImport = require ("../lib/fubu-import.js")
     functions = ["importAssets", "cleanAssets", "setupFileSystem"]
     ensureIsFunction = (functionName) ->
       it "should export #{functionName}", ->
@@ -61,16 +61,21 @@ describe "makeFolders", ->
   mkdirpMock =
     sync: (fileName) ->
       createdFolders.push fileName
-  fubuImport.__set__ "mkdirp", mkdirpMock
 
   it "creates assets/{scripts,styles} and public folder for you", ->
+    fubuImport.__set__ "mkdirp", mkdirpMock
     makeFolders()
     expect(createdFolders).to.eql ['assets/scripts', 'assets/styles', 'public']
 
 describe "parseXml", ->
   parseXml = fubuImport.__get__ "parseXml"
+  fsMock =
+    readFileSync: (fileName) ->
+      "<tag><numbers>one</numbers><numbers>two</numbers></tag>"
+
   it "can produce javascript object from xml", ->
+    fubuImport.__set__ "fs", fsMock
     numbers = ["one","two"]
-    input = "<tag><numbers>one</numbers><numbers>two</numbers></tag>"
-    output = parseXml input
-    expect(output).to.have.deep.property("tag.numbers", numbers)
+    output = parseXml 'test.xml'
+    expect(output).to.have.deep.property("tag.numbers[0]", 'one')
+    expect(output).to.have.deep.property("tag.numbers[1]", 'two')
