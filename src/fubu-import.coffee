@@ -63,4 +63,7 @@ copyContents = (pair) ->
     logger.info "creating #{fileName}"
     fs.writeFileSync fileName, contents
 
+parseXml = (filePath) ->
+  ""
+
 module.exports = {importAssets, cleanAssets, setupFileSystem}

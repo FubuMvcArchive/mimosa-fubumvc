@@ -1,7 +1,7 @@
 rewire = require("rewire")
 chai = require("chai")
 fubuImport = rewire("../lib/fubu-import.js")
-chai.should()
+expect = chai.expect
 _ = require("lodash")
 path = require 'path'
 
@@ -11,14 +11,14 @@ describe "fubu-import module", ->
     functions = ["importAssets", "cleanAssets", "setupFileSystem"]
     ensureIsFunction = (functionName) ->
       it "should export #{functionName}", ->
-        (typeof rawFubuImport[functionName]).should.equal("function")
+        expect(typeof rawFubuImport[functionName]).to.equal("function")
 
     ensureIsFunction functionName for functionName in functions
 
     it "should not export anything else", ->
       #rewire puts extra properties on the module that won't be there when its 'required'
       _.each rawFubuImport, (value, key) ->
-        (_.contains functions, key).should.equal true
+        expect(_.contains functions, key).to.equal true
 
 describe "relative paths", ->
   relativeToThisFile = fubuImport.__get__ "relativeToThisFile"
@@ -26,7 +26,7 @@ describe "relative paths", ->
     sep = path.sep
     fakeDirname = "path#{sep}to#{sep}file"
     fileName = "test.txt"
-    (relativeToThisFile fileName, fakeDirname).should.equal "#{fakeDirname}#{sep}#{fileName}"
+    expect(relativeToThisFile fileName, fakeDirname).to.equal "#{fakeDirname}#{sep}#{fileName}"
 
 describe "initFiles", ->
   initFiles = fubuImport.__get__ "initFiles"
@@ -39,7 +39,7 @@ describe "initFiles", ->
       writeFileSync: (fileName) -> writtenFiles.push fileName
     fubuImport.__set__ "fs", fsMock
     initFiles(flags)
-    writtenFiles.should.eql output
+    expect(writtenFiles).to.eql output
 
   it "writes files", ->
     writesFiles ["bower.json", "mimosa-config.js"]
@@ -65,5 +65,12 @@ describe "makeFolders", ->
 
   it "creates assets/{scripts,styles} and public folder for you", ->
     makeFolders()
-    createdFolders.should.eql ['assets/scripts', 'assets/styles', 'public']
+    expect(createdFolders).to.eql ['assets/scripts', 'assets/styles', 'public']
 
+describe "parseXml", ->
+  parseXml = fubuImport.__get__ "parseXml"
+  it "can produce javascript object from xml", ->
+    numbers = ["one","two"]
+    input = "<tag><numbers>one</numbers><numbers>two</numbers></tag>"
+    output = parseXml input
+    expect(output).to.have.deep.property("tag.numbers", numbers)
