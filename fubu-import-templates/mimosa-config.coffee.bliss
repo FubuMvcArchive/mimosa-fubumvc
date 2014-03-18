@@ -8,7 +8,7 @@ exports.config =
     "minify-js",
     "minify-css",
     "bower",
-    "mimosa-fubu"
+    "mimosa-fubumvc"
   ]
 
   watch:

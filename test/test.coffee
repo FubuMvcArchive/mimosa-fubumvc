@@ -8,7 +8,7 @@ path = require 'path'
 describe "fubu-import module", ->
   rawFubuImport = require ("../lib/fubu-import.js")
   describe 'exports', ->
-    functions = ["importAssets", "cleanAssets", "registerCommand"]
+    functions = ["importAssets", "cleanAssets", "setupFileSystem"]
     ensureIsFunction = (functionName) ->
       it "should export #{functionName}", ->
         (typeof rawFubuImport[functionName]).should.equal("function")
@@ -28,7 +28,7 @@ describe "relative paths", ->
     fileName = "test.txt"
     (relativeToThisFile fileName, fakeDirname).should.equal "#{fakeDirname}#{sep}#{fileName}"
 
-describe "fubu:init command", ->
+describe "initFiles", ->
   initFiles = fubuImport.__get__ "initFiles"
 
   writesFiles = (output, flags) ->
@@ -45,7 +45,7 @@ describe "fubu:init command", ->
     writesFiles ["bower.json", "mimosa-config.js"]
 
   it "uses .coffee extension for files when -c flag is passed", ->
-    writesFiles ["bower.json", "mimosa-config.coffee"], "-c"
+    writesFiles ["bower.json", "mimosa-config.coffee"], "coffee"
 
   it "only writes files if they don't exist already", ->
     fsMock =
@@ -55,4 +55,15 @@ describe "fubu:init command", ->
     fubuImport.__set__ "fs", fsMock
     initFiles()
 
+describe "makeFolders", ->
+  makeFolders = fubuImport.__get__ "makeFolders"
+  createdFolders = []
+  mkdirpMock =
+    sync: (fileName) ->
+      createdFolders.push fileName
+  fubuImport.__set__ "mkdirp", mkdirpMock
+
+  it "creates assets/{scripts,styles} and public folder for you", ->
+    makeFolders()
+    createdFolders.should.eql ['assets/scripts', 'assets/styles', 'public']
 

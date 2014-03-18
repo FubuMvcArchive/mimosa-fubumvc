@@ -7,5 +7,3 @@ exports.config =
   jshint:
     rules:
       node: true
-  template:
-    outputFileName: "templates"

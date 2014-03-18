@@ -6,6 +6,7 @@ watch = require 'chokidar'
 wrench = require 'wrench'
 logger = require 'logmimosa'
 _ = require 'lodash'
+mkdirp = require 'mkdirp'
 Bliss = require 'bliss'
 bliss = new Bliss
   ext: ".bliss"
@@ -13,6 +14,11 @@ bliss = new Bliss
   context: {}
 
 importAssets = (mimosaConfig, options, next) ->
+  extensions = mimosaConfig.extensions.copy
+  #TODO: gather sources
+  #.links
+  #fubu-content
+  #source dir (including content)
   next()
 
 cleanAssets = (mimosaConfig, options, next) ->
@@ -22,16 +28,27 @@ relativeToThisFile = (filePath, dirname) ->
   dirname ?= __dirname
   path.join dirname, filePath
 
+setupFileSystem = (args) ->
+  makeFolders()
+  initFiles(args)
+
+makeFolders = ->
+  folders = ['assets/scripts', 'assets/styles', 'public']
+  _.each folders, (dir) ->
+    logger.info "making sure #{dir} exists"
+    mkdirp.sync dir, (err) ->
+      logger.error(err)
+
 makeOptions = ->
   options =
-    name: path.basename __dirname
+    name: path.basename process.cwd()
 
 initFiles = (flags = false) ->
-  useCoffee = flags == "-c"
+  useCoffee = flags == "coffee"
   options = makeOptions()
   ext = if useCoffee then "coffee" else "js"
   files = ["bower.json", "mimosa-config.#{ext}"]
-  contents = _.chain files
+  contents = _ files
     .map (f) -> relativeToThisFile "../fubu-import-templates/#{f}"
     .map (f) -> bliss.render f, options
     .map (f) -> f.trim()
@@ -46,11 +63,4 @@ copyContents = (pair) ->
     logger.info "creating #{fileName}"
     fs.writeFileSync fileName, contents
 
-registerCommand = (program, retrieveConfig) ->
-  program
-    .command('fubu:init')
-    .description("scaffolds initial mimosa files, use -c for coffeescript")
-    .action (opts)->
-      initFiles(opts)
-
-module.exports = {importAssets, cleanAssets, registerCommand}
+module.exports = {importAssets, cleanAssets, setupFileSystem}
