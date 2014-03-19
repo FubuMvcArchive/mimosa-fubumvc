@@ -17,7 +17,9 @@ cwd = process.cwd()
 
 importAssets = (mimosaConfig, options, next) ->
   extensions = mimosaConfig.extensions.copy
-  sourceFiles = findSourceFiles extensions
+  #TODO: get excludes from config instead of hard coding
+  excludes = ["bin", "obj", /^\./]
+  sourceFiles = findSourceFiles extensions, excludes
   logger.info sourceFiles
   #TODO: gather sources
   #.links, will use parseXml for this
@@ -28,13 +30,28 @@ importAssets = (mimosaConfig, options, next) ->
 cleanAssets = (mimosaConfig, options, next) ->
   next()
 
-findSourceFiles = (extensions) ->
+findSourceFiles = (extensions, excludes) ->
   extensions = extensions.map (ext) -> ".#{ext}"
   wrench.readdirSyncRecursive(cwd)
     .filter (f) ->
       matchesExtension = _.contains extensions, path.extname f
       isFile = fs.statSync(f).isFile()
-      matchesExtension and isFile
+      excluded = isExcluded f, excludes
+      matchesExtension and isFile and not excluded
+
+isExcluded = (path, excludes) ->
+  excludeStrategies =
+    string:
+      identity: _.isString
+      predicate: (ex) -> path.indexOf(ex) == 0
+    regex:
+      identity: _.isRegExp
+      predicate: (ex) -> ex.test path
+  ofType = (method) ->
+    excludes.filter (f) -> method(f)
+
+  _.any excludeStrategies, ({identity, predicate}) ->
+    _.any (ofType identity), predicate
 
 relativeToThisFile = (filePath, dirname) ->
   dirname ?= __dirname

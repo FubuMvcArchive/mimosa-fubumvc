@@ -1,15 +1,19 @@
 "use strict"
 
 exports.defaults = ->
-  fubuImport:
-    placeholder: ""
+  fubumvc:
+    excludePaths: ["bin", "obj", /^\./]
 
 exports.placeholder = ->
   """
   \t
 
-    # fubu-import:             # Put some meaningful comments here
+  # fubumvc:
+    # excludePaths: ["bin", "obj", /^\./]
   """
 exports.validate = (config, validators) ->
   errors = []
+  {fubumvc} = config
+  console.log fubumvc
+
   errors

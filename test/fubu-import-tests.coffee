@@ -106,7 +106,7 @@ describe "findSourceFiles", ->
        (path.join "one", "two", "3.doc"),
       ]
     fubuImport.__set__ {fs, wrench}
-    result = findSourceFiles(["js", "less", "sass"])
+    result = findSourceFiles ["js", "less", "sass"], []
     expect(result).to.eql expected
 
   it "doesn't pick up excluded things", ->
@@ -117,5 +117,22 @@ describe "findSourceFiles", ->
        (path.join "obj", "Debug", "test.txt")
       ]
     fubuImport.__set__ {fs, wrench}
-    result = findSourceFiles(["json", "js", "xml", "txt"])
+    excludes = ["bin", "obj", /^\./]
+    result = findSourceFiles ["json", "js", "xml", "txt"], excludes
     expect(result).to.eql []
+
+describe "isExcluded", ->
+  isExcluded = fubuImport.__get__ "isExcluded"
+  excludes = ["bin", "obj", /^\./]
+
+  it "returns true when a path matches a string exclude", ->
+    result = isExcluded "bin/somefile.txt", excludes
+    expect(result).to.equal true
+
+  it "returns true when a path matches a regex exclude", ->
+    result = isExcluded ".mimosa/somefile.txt", excludes
+    expect(result).to.equal true
+
+  it "returns false otherwise", ->
+    result = isExcluded "other/folder/somefile.txt", excludes
+    expect(result).to.equal false
