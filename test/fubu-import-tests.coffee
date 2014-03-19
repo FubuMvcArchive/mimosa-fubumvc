@@ -44,7 +44,7 @@ describe "initFiles", ->
   it "writes files", ->
     writesFiles ["bower.json", "mimosa-config.js"]
 
-  it "uses .coffee extension for files when -c flag is passed", ->
+  it "uses .coffee extension for files when coffee flag is passed", ->
     writesFiles ["bower.json", "mimosa-config.coffee"], "coffee"
 
   it "only writes files if they don't exist already", ->
@@ -87,7 +87,7 @@ describe "findSourceFiles", ->
     statSync: (file) ->
       isFile: -> true
 
-  files = -> #empty for now
+  files = -> #empty for now, set by individual tests
 
   wrench =
     readdirSyncRecursive: (dir) -> files()

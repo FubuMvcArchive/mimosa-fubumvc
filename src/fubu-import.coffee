@@ -17,8 +17,7 @@ cwd = process.cwd()
 
 importAssets = (mimosaConfig, options, next) ->
   extensions = mimosaConfig.extensions.copy
-  #TODO: get excludes from config instead of hard coding
-  excludes = ["bin", "obj", /^\./]
+  excludes = mimosaConfig.fubumvc.excludePaths
   sourceFiles = findSourceFiles extensions, excludes
   logger.info sourceFiles
   #TODO: gather sources
@@ -39,19 +38,20 @@ findSourceFiles = (extensions, excludes) ->
       excluded = isExcluded f, excludes
       matchesExtension and isFile and not excluded
 
+excludeStrategies =
+  string:
+    identity: _.isString
+    predicate: (ex, path) -> path.indexOf(ex) == 0
+  regex:
+    identity: _.isRegExp
+    predicate: (ex, path) -> ex.test path
+
 isExcluded = (path, excludes) ->
-  excludeStrategies =
-    string:
-      identity: _.isString
-      predicate: (ex) -> path.indexOf(ex) == 0
-    regex:
-      identity: _.isRegExp
-      predicate: (ex) -> ex.test path
   ofType = (method) ->
     excludes.filter (f) -> method(f)
 
   _.any excludeStrategies, ({identity, predicate}) ->
-    _.any (ofType identity), predicate
+    _.any (ofType identity), (ex) -> predicate ex, path
 
 relativeToThisFile = (filePath, dirname) ->
   dirname ?= __dirname
