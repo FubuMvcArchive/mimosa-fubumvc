@@ -33,10 +33,11 @@ findSourceFiles = (extensions, excludes) ->
   extensions = extensions.map (ext) -> ".#{ext}"
   wrench.readdirSyncRecursive(cwd)
     .filter (f) ->
+      atRoot = f.indexOf(path.sep) == -1
       matchesExtension = _.contains extensions, path.extname f
       isFile = fs.statSync(f).isFile()
       excluded = isExcluded f, excludes
-      matchesExtension and isFile and not excluded
+      matchesExtension and isFile and not excluded and not atRoot
 
 excludeStrategies =
   string:
@@ -62,7 +63,6 @@ setupFileSystem = (args) ->
   initFiles(args)
 
 makeFolders = ->
-  #TODO: read this from config settings instead of hard coding this
   folders = ['assets/scripts', 'assets/styles', 'public']
   _.each folders, (dir) ->
     logger.info "making sure #{dir} exists"
@@ -87,8 +87,7 @@ initFiles = (flags = false) ->
 
   copyContents pair for pair in fileWithContents
 
-copyContents = (pair) ->
-  [fileName, contents] = pair
+copyContents = ([fileName, contents]) ->
   unless fs.existsSync fileName
     logger.info "creating #{fileName}"
     fs.writeFileSync fileName, contents

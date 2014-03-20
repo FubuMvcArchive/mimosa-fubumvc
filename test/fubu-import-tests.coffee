@@ -56,7 +56,6 @@ describe "initFiles", ->
     initFiles()
 
 describe "makeFolders", ->
-  #TODO: test coming from a config
   makeFolders = fubuImport.__get__ "makeFolders"
   createdFolders = []
   mkdirp =
@@ -92,9 +91,20 @@ describe "findSourceFiles", ->
   wrench =
     readdirSyncRecursive: (dir) -> files()
 
-  it "finds only the files that match extensions", ->
+  it "ignores anything at the root", ->
     expected = [
       "1.js",
+      "bower.json",
+      "mimosa.config.js",
+      "mimosa.config.coffee",
+    ]
+    files = -> expected
+    fubuImport.__set__ {fs, wrench}
+    result = findSourceFiles ["js", "json", "coffee"], [] #empty excludes
+    expect(result).to.eql []
+
+  it "finds only the files that match extensions", ->
+    expected = [
       (path.join "one", "2.js"),
       (path.join "one", "2.less"),
       (path.join "one", "two", "3.sass"),
@@ -106,7 +116,7 @@ describe "findSourceFiles", ->
        (path.join "one", "two", "3.doc"),
       ]
     fubuImport.__set__ {fs, wrench}
-    result = findSourceFiles ["js", "less", "sass"], []
+    result = findSourceFiles ["js", "less", "sass"], [] #empty excludes
     expect(result).to.eql expected
 
   it "doesn't pick up excluded things", ->
