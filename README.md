@@ -1,48 +1,58 @@
-Building a Module
-===
-
-As this is a CoffeeScript skeleton, it comes with its own `mimosa-config.coffee` that you can use to compile the skeleton itself.  (Installing CoffeeScript modules to NPM is frowned upon.)  Compilation of the skeleton will happen naturally when you run `mimosa mod:install`.  `mimosa mod:install` is how you would install this module locally to test it.
-
-The contents of this skeleton consist of some example code, a ton of comments and some [Docco](http://jashkenas.github.io/docco/) style documentation.
-
-If you have any questions about building a mimosa module, feel free to hit up @mimosajs or open up [an issue](https://github.com/dbashford/mimosa/issues?state=open) for discussion purposes.
-
-The rest of this README is what you may want to transform the README to once development is complete.
-
-Fubu
+mimosa-fubumvc
 ===========
 ## Overview
 
-Asset pipeline for fubu
+Connects fubumvc concerns to mimosas asset pipeline
 
-Define where your main project is located, aka "src/myproject"
+Mimosa expects all source asset files to come together into a common directory
+before being built.  For us that directory will be "assets" although this is
+configurable if you want to change it.
 
-Allows you to set your asset files side by side your controllers and still have them get picked up
-
-Everything gets pulled into "src/myproject/assets" for precompiled bits, and post compilation things end up at "src/myproject/public"
-
-Goals:
-Automatically watch _content folder for backwards compatibility
-support arbitrary number of additional folders to behave the same way
-support side by side files next to .cs files anywhere in the application
-support content that needs to come from bottles
-javascript resources pull through bower, somehow sort that out with bottles
+This modules goal is to help move files from various fubumvc locations to
+mimosas "assets" directory so that they can be picked up, compiled /
+transformed as necessary and then mimosa moves them to your "public" folder
+which is what you can then serve as static content via your webserver
 
 For more information regarding Mimosa, see http://mimosa.io
 
 ## Usage
 
-Add `'???'` to your list of modules.  That's all!  Mimosa will install the module for you when you start up.
+Add `mimosa-fubumvc` to your list of modules.  That's all!  Mimosa will install the module for you when you start up.
 
 ## Functionality
 
+### fubu:init command
+
+Run this from the folder of your fubu mvc web application (ie, the same folder your .csproj sits in)
+
+Creates
+
+  * bower.json
+  * mimosa-config.js (or mimosa-config.coffee if "coffee" flag is passed)
+  * assets/scripts
+  * assets/styles
+  * public
+
+### Workflow
+
+  From the command line, run "mimosa build" while in the folder that holds the
+mimosa-config file.
+
+Rules for picking up files:
+
+  * nothing at the root directory will get picked up, this is to avoid things
+  like the bower.json and mimosa-config.js
+  * must match the list of extensions provided by the mimosa copy modules config section, the defaults for it look like this:
+
+  ["js","css","png","jpg","jpeg","gif","html","eot","svg","ttf","woff","otf","yaml","kml","ico","htc","htm","json","txt","xml","xsd","map","md","mp4","mp3"]
+
+  * must not match excludePaths rules provided by fubumvc config section
+    used to ignore things that come from bin/obj folders, and any folders that start with a . (hidden folders like .mimosa ,etc)
+
+This means you can have assets side by side other source files in your solution
+and they will still get picked up.
 
 ## Default Config
 
-```
-```
-
-## Example Config
-
-```
-```
+  fubumvc:
+    excludePaths: ["bin", "obj", /^\./]
