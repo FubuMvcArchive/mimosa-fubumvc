@@ -146,3 +146,10 @@ describe "isExcluded", ->
   it "returns false otherwise", ->
     result = isExcluded "other/folder/somefile.txt", excludes
     expect(result).to.equal false
+
+#TODO:
+describe "startCopying", ->
+  startCopying = fubuImport.__get__ "startCopying"
+  it "does", (done) ->
+    result = startCopying(process.cwd(), done)
+

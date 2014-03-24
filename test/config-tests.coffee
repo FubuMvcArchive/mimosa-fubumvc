@@ -34,3 +34,16 @@ describe "the config", ->
     result = config.validate fakeConfig
     expect(result).to.eql ["fubumvc.excludePaths entries must be either strings or regexes"]
 
+  it "includes the sourceDir and compiledDir from watch config to excludePaths", ->
+    sourceDir = "assets"
+    compiledDir = "public"
+    excludePaths = ["obj", "bin", /^$/]
+    fakeConfig =
+      watch: {sourceDir, compiledDir}
+      fubumvc: {excludePaths}
+    expected = [].concat.apply excludePaths, [sourceDir, compiledDir]
+    result = config.validate fakeConfig
+    expect(result).to.eql []
+    expect(fakeConfig.fubumvc.excludePaths).to.eql expected
+
+

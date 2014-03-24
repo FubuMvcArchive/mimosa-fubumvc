@@ -14,6 +14,7 @@ bliss = new Bliss
   cacheEnabled: false,
   context: {}
 cwd = process.cwd()
+Rx = require "rx"
 
 importAssets = (mimosaConfig, options, next) ->
   extensions = mimosaConfig.extensions.copy
@@ -38,6 +39,45 @@ findSourceFiles = (extensions, excludes) ->
       isFile = fs.statSync(f).isFile()
       excluded = isExcluded f, excludes
       matchesExtension and isFile and not excluded and not atRoot
+
+startCopying = (from, cb) ->
+  #exclude: [/[/\\](\.|~)[^/\\]+$/]   # regexes or strings matching the files to be
+  excludes = ["test.txt"]
+  watchSettings =
+    ignored: (f) -> isExcluded f, excludes
+    persistent: false
+    usePolling: true
+    interval: 500
+    binaryInterval: 1000
+  watcher = watch.watch from, watchSettings
+
+  adds = Rx.Observable.fromEvent watcher, "add"
+  changes = Rx.Observable.fromEvent watcher, "change"
+  unlinks = Rx.Observable.fromEvent watcher, "unlink"
+  errors = (Rx.Observable.fromEvent watcher, "error").map (e) -> Rx.Observable.Throw e
+
+  console.log from
+
+  scrub = (input) ->
+    input.replace from, ''
+
+  filesToCopy = adds
+    .merge(changes)
+    .merge(errors)
+    .map scrub
+
+  filesToCopy.subscribe \
+    (f) -> console.log "added #{f}"; cb(),
+    (e) -> console.log "error #{e.message}"
+
+  filesToDelete = unlinks
+    .merge(errors)
+    .map (f) -> path.basename f
+
+  watcher.on "change", (f) -> console.log "changed #{f}"
+  watcher.on "unlink", (f) -> console.log "unlinked #{f}"
+  #watcher.on "add", (f) -> console.log "added #{f}"; cb()
+  watcher.on "error", (error) -> console.log "error #{error}"
 
 excludeStrategies =
   string:
@@ -86,6 +126,9 @@ initFiles = (flags = false) ->
   fileWithContents = _.zip(files, contents)
 
   copyContents pair for pair in fileWithContents
+  #avoid returning an array of nothing when using a comprehension as your last line
+  #by using an explicit return
+  return
 
 copyContents = ([fileName, contents]) ->
   unless fs.existsSync fileName

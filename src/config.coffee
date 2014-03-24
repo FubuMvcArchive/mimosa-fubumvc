@@ -1,6 +1,7 @@
 "use strict"
 
 _ = require "lodash"
+path = require 'path'
 
 exports.defaults = ->
   fubumvc:
@@ -13,6 +14,7 @@ exports.placeholder = ->
   # fubumvc:
     # excludePaths: ["bin", "obj", /^\./]
   """
+
 exports.validate = (config, validators) ->
   errors = []
   {fubumvc} = config
@@ -30,5 +32,12 @@ exports.validate = (config, validators) ->
 
   unless allItemsOk
     errors.push "fubumvc.excludePaths entries must be either strings or regexes"
+    return errors
+
+  #auto-include the sourceDir and compiledDir into excludePaths list
+  {watch: {sourceDir, compiledDir}} = config
+  assetIgnorePaths = _.map [sourceDir, compiledDir], (p) -> path.basename p
+
+  config.fubumvc.excludePaths = [].concat.apply excludePaths, assetIgnorePaths
 
   errors
