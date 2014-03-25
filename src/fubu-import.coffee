@@ -19,13 +19,12 @@ Rx = require "rx"
 importAssets = (mimosaConfig, options, next) ->
   extensions = mimosaConfig.extensions.copy
   excludes = mimosaConfig.fubumvc.excludePaths
-  sourceFiles = findSourceFiles cwd, extensions, excludes
-  logger.info sourceFiles
+  isBuild = mimosaConfig.isBuild
+  startCopying cwd, extensions, excludes, isBuild, next
   #TODO: gather sources
   #.links, will use parseXml for this
   #fubu-content
   #source dir (including content)
-  next()
 
 cleanAssets = (mimosaConfig, options, next) ->
   next()
@@ -45,9 +44,11 @@ shouldInclude = (f, extensions, excludes) ->
   excluded = isExcludedByConfig f, excludes
   matchesExtension and not excluded and not atRoot
 
-prepareFileWatcher = (from, extensions, excludes) ->
+prepareFileWatcher = (from, extensions, excludes, isBuild) ->
+  #TODO: no more sync calls
   files  = findSourceFiles from, extensions, excludes
   numberOfFiles  = files.length
+  fixPath = (input) -> withoutFromPath input, from
 
   watchSettings =
     ignored: (file) ->
@@ -55,59 +56,59 @@ prepareFileWatcher = (from, extensions, excludes) ->
       if isDirectory
         false
       else
-        not (shouldInclude file, extensions, excludes)
-    pesistent: false
+        f = fixPath file
+        not (shouldInclude f, extensions, excludes)
+    pesistent: not isBuild
     usePolling: true
     interval: 500
     binaryInterval: 1000
 
+  observableFor = (event) ->
+    Rx.Observable.fromEvent watcher, event
+
   watcher = watch.watch from, watchSettings
-  adds = Rx.Observable.fromEvent watcher, "add"
-  changes = Rx.Observable.fromEvent watcher, "change"
-  unlinks = Rx.Observable.fromEvent watcher, "unlink"
-  errors = (Rx.Observable.fromEvent watcher, "error").selectMany (e) -> Rx.Observable.Throw e
+  adds = observableFor "add"
+  changes = observableFor "change"
+  unlinks = observableFor "unlink"
+  errors = (observableFor "error").selectMany (e) -> Rx.Observable.Throw e
   {numberOfFiles, adds, changes, unlinks, errors}
 
-startCopying = (from, extensions, excludes, cb) ->
+withoutFromPath = (input, fromPath) ->
+  input.replace "#{fromPath}#{path.sep}", ''
+
+startCopying = (from, extensions, excludes, isBuild, cb) ->
+  logger.debug "starting copy from: #{from}"
+  logger.debug "extensions: #{extensions}"
+  logger.debug "excludes: #{excludes}"
   {numberOfFiles, adds, changes, unlinks, errors} =
-    prepareFileWatcher from, extensions, excludes
+    prepareFileWatcher from, extensions, excludes, isBuild
 
-  withoutFromPath = (input) ->
-    input.replace "#{from}#{path.sep}", ''
+  fixPath = (input) -> withoutFromPath input, from
 
-  initialCopy = adds
-    .merge(errors)
+  fromSource = (obs) ->
+    obs.merge(errors).map fixPath
+
+  initialCopy = fromSource(adds)
     .take(numberOfFiles)
-    .map withoutFromPath
+
+  deletes = fromSource(unlinks)
 
   initialCopy.subscribe(
     (f) ->
-      logger.info "onNext: #{f}"
+      logger.debug "intial copy: #{f}"
     (e) ->
-      logger.info "onError: #{e}"
+      logger.error "error with initial copy: #{e.message}"
       cb() if cb
     () ->
-      logger.info "onCompleted"
+      ongoingCopy = fromSource(adds.merge changes)
+      ongoingCopy.subscribe(
+        (f) ->
+          logger.debug "copy: #{f}"
+        (e) ->
+          logger.debug "error: #{e}"
+      )
       cb() if cb
   )
-
-  ongoingCopy = adds
-    .merge(changes)
-    .merge(errors)
-    .map withoutFromPath
-
-  ongoingCopy.subscribe(
-    (f) ->
-      logger.info "onNext: #{f}"
-    (e) ->
-      logger.info "onError: #{e}"
-    () ->
-      logger.info "onCompleted"
-  )
-
-  #filesToDelete = unlinks
-  #  .merge(errors)
-  #  .map (f) -> path.basename f
 
 excludeStrategies =
   string:
@@ -139,23 +140,21 @@ makeFolders = ->
     mkdirp.sync dir, (err) ->
       logger.error(err)
 
-makeOptions = ->
-  options =
-    name: path.basename cwd
-
 initFiles = (flags = false) ->
   useCoffee = flags == "coffee"
-  options = makeOptions()
   ext = if useCoffee then "coffee" else "js"
   files = ["bower.json", "mimosa-config.#{ext}"]
+  viewModel =
+    name: path.basename cwd
   contents = _ files
     .map (f) -> relativeToThisFile "../fubu-import-templates/#{f}"
-    .map (f) -> bliss.render f, options
+    .map (f) -> bliss.render f, viewModel
     .map (f) -> f.trim()
     .value()
   fileWithContents = _.zip(files, contents)
 
-  copyContents pair for pair in fileWithContents
+  _.each fileWithContents, (pair) ->
+    copyContents pair
   #avoid returning an array of nothing when using a comprehension as your last line
   #by using an explicit return
   return

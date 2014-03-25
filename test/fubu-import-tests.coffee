@@ -148,7 +148,6 @@ describe "isExcludedByConfig", ->
     result = isExcludedByConfig "other/folder/somefile.txt", excludes
     expect(result).to.equal false
 
-#TODO:
 describe "startCopying", ->
   startCopying = fubuImport.__get__ "startCopying"
   cwd = process.cwd()
@@ -158,20 +157,16 @@ describe "startCopying", ->
       obs.onNext path.join cwd, "mimosa-config.js"
       obs.onNext path.join cwd, "content/scripts/1.js"
       obs.onNext path.join cwd, "content/styles/1.less"
-      return () -> ""
     changes = Rx.Observable.never()
     unlinks = Rx.Observable.never()
     errors = (Rx.Observable.create (obs) ->
       obs.onNext {message: "there was an error"}
-      return () -> "")
-        .selectMany (e) -> Rx.Observable.throw e
+      ).selectMany (e) -> Rx.Observable.throw e
 
     {numberOfFiles, adds, changes, unlinks, errors}
 
-  extensions = ["js", "coffee"]
-  excludes = ["node_modules", /^\./]
   fubuImport.__set__ {prepareFileWatcher}
 
   it "does", (done) ->
-    startCopying(cwd, extensions, excludes, done)
+    startCopying(cwd, [], [], true, done)
 
