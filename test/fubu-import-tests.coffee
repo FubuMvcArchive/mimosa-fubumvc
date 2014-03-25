@@ -4,6 +4,7 @@ fubuImport = rewire("../lib/fubu-import.js")
 expect = chai.expect
 _ = require("lodash")
 path = require 'path'
+Rx = require "rx"
 
 describe "fubu-import module", ->
   describe 'exports', ->
@@ -100,7 +101,7 @@ describe "findSourceFiles", ->
     ]
     files = -> expected
     fubuImport.__set__ {fs, wrench}
-    result = findSourceFiles ["js", "json", "coffee"], [] #empty excludes
+    result = findSourceFiles ".", ["js", "json", "coffee"], [] #empty excludes
     expect(result).to.eql []
 
   it "finds only the files that match extensions", ->
@@ -110,13 +111,13 @@ describe "findSourceFiles", ->
       (path.join "one", "two", "3.sass"),
     ]
     files = ->
-      [].concat.apply expected, [
+      expected.concat [
        ".links",
        (path.join "one", "2.txt"),
        (path.join "one", "two", "3.doc"),
       ]
     fubuImport.__set__ {fs, wrench}
-    result = findSourceFiles ["js", "less", "sass"], [] #empty excludes
+    result = findSourceFiles ".", ["js", "less", "sass"], [] #empty excludes
     expect(result).to.eql expected
 
   it "doesn't pick up excluded things", ->
@@ -128,28 +129,49 @@ describe "findSourceFiles", ->
       ]
     fubuImport.__set__ {fs, wrench}
     excludes = ["bin", "obj", /^\./]
-    result = findSourceFiles ["json", "js", "xml", "txt"], excludes
+    result = findSourceFiles ".", ["json", "js", "xml", "txt"], excludes
     expect(result).to.eql []
 
-describe "isExcluded", ->
-  isExcluded = fubuImport.__get__ "isExcluded"
+describe "isExcludedByConfig", ->
+  isExcludedByConfig = fubuImport.__get__ "isExcludedByConfig"
   excludes = ["bin", "obj", /^\./]
 
   it "returns true when a path matches a string exclude", ->
-    result = isExcluded "bin/somefile.txt", excludes
+    result = isExcludedByConfig "bin/somefile.txt", excludes
     expect(result).to.equal true
 
   it "returns true when a path matches a regex exclude", ->
-    result = isExcluded ".mimosa/somefile.txt", excludes
+    result = isExcludedByConfig ".mimosa/somefile.txt", excludes
     expect(result).to.equal true
 
   it "returns false otherwise", ->
-    result = isExcluded "other/folder/somefile.txt", excludes
+    result = isExcludedByConfig "other/folder/somefile.txt", excludes
     expect(result).to.equal false
 
 #TODO:
 describe "startCopying", ->
   startCopying = fubuImport.__get__ "startCopying"
+  cwd = process.cwd()
+  prepareFileWatcher = () ->
+    numberOfFiles = 3
+    adds = Rx.Observable.create (obs) ->
+      obs.onNext path.join cwd, "mimosa-config.js"
+      obs.onNext path.join cwd, "content/scripts/1.js"
+      obs.onNext path.join cwd, "content/styles/1.less"
+      return () -> ""
+    changes = Rx.Observable.never()
+    unlinks = Rx.Observable.never()
+    errors = (Rx.Observable.create (obs) ->
+      obs.onNext {message: "there was an error"}
+      return () -> "")
+        .selectMany (e) -> Rx.Observable.throw e
+
+    {numberOfFiles, adds, changes, unlinks, errors}
+
+  extensions = ["js", "coffee"]
+  excludes = ["node_modules", /^\./]
+  fubuImport.__set__ {prepareFileWatcher}
+
   it "does", (done) ->
-    result = startCopying(process.cwd(), done)
+    startCopying(cwd, extensions, excludes, done)
 

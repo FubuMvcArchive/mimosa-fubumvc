@@ -41,7 +41,7 @@ describe "the config", ->
     fakeConfig =
       watch: {sourceDir, compiledDir}
       fubumvc: {excludePaths}
-    expected = [].concat.apply excludePaths, [sourceDir, compiledDir]
+    expected = excludePaths.concat [sourceDir, compiledDir]
     result = config.validate fakeConfig
     expect(result).to.eql []
     expect(fakeConfig.fubumvc.excludePaths).to.eql expected

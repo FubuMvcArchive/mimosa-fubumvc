@@ -19,7 +19,7 @@ Rx = require "rx"
 importAssets = (mimosaConfig, options, next) ->
   extensions = mimosaConfig.extensions.copy
   excludes = mimosaConfig.fubumvc.excludePaths
-  sourceFiles = findSourceFiles extensions, excludes
+  sourceFiles = findSourceFiles cwd, extensions, excludes
   logger.info sourceFiles
   #TODO: gather sources
   #.links, will use parseXml for this
@@ -30,54 +30,84 @@ importAssets = (mimosaConfig, options, next) ->
 cleanAssets = (mimosaConfig, options, next) ->
   next()
 
-findSourceFiles = (extensions, excludes) ->
-  extensions = extensions.map (ext) -> ".#{ext}"
-  wrench.readdirSyncRecursive(cwd)
+findSourceFiles = (from, extensions, excludes) ->
+  wrench.readdirSyncRecursive(from)
     .filter (f) ->
-      atRoot = f.indexOf(path.sep) == -1
-      matchesExtension = _.contains extensions, path.extname f
+      isIncluded = shouldInclude f, extensions, excludes
       isFile = fs.statSync(f).isFile()
-      excluded = isExcluded f, excludes
-      matchesExtension and isFile and not excluded and not atRoot
+      isIncluded and isFile
 
-startCopying = (from, cb) ->
-  #exclude: [/[/\\](\.|~)[^/\\]+$/]   # regexes or strings matching the files to be
-  excludes = ["test.txt"]
+shouldInclude = (f, extensions, excludes) ->
+  #TODO: only adds the . to you for extensions if its left off
+  extensions = extensions.map (ext) -> ".#{ext}"
+  atRoot = f.indexOf(path.sep) == -1
+  matchesExtension = _.contains extensions, path.extname f
+  excluded = isExcludedByConfig f, excludes
+  matchesExtension and not excluded and not atRoot
+
+prepareFileWatcher = (from, extensions, excludes) ->
+  files  = findSourceFiles from, extensions, excludes
+  numberOfFiles  = files.length
+
   watchSettings =
-    ignored: (f) -> isExcluded f, excludes
-    persistent: false
+    ignored: (file) ->
+      isDirectory = fs.statSync(file).isDirectory()
+      if isDirectory
+        false
+      else
+        not (shouldInclude file, extensions, excludes)
+    pesistent: false
     usePolling: true
     interval: 500
     binaryInterval: 1000
-  watcher = watch.watch from, watchSettings
 
+  watcher = watch.watch from, watchSettings
   adds = Rx.Observable.fromEvent watcher, "add"
   changes = Rx.Observable.fromEvent watcher, "change"
   unlinks = Rx.Observable.fromEvent watcher, "unlink"
-  errors = (Rx.Observable.fromEvent watcher, "error").map (e) -> Rx.Observable.Throw e
+  errors = (Rx.Observable.fromEvent watcher, "error").selectMany (e) -> Rx.Observable.Throw e
+  {numberOfFiles, adds, changes, unlinks, errors}
 
-  console.log from
+startCopying = (from, extensions, excludes, cb) ->
+  {numberOfFiles, adds, changes, unlinks, errors} =
+    prepareFileWatcher from, extensions, excludes
 
-  scrub = (input) ->
-    input.replace from, ''
+  withoutFromPath = (input) ->
+    input.replace "#{from}#{path.sep}", ''
 
-  filesToCopy = adds
+  initialCopy = adds
+    .merge(errors)
+    .take(numberOfFiles)
+    .map withoutFromPath
+
+  initialCopy.subscribe(
+    (f) ->
+      logger.info "onNext: #{f}"
+    (e) ->
+      logger.info "onError: #{e}"
+      cb() if cb
+    () ->
+      logger.info "onCompleted"
+      cb() if cb
+  )
+
+  ongoingCopy = adds
     .merge(changes)
     .merge(errors)
-    .map scrub
+    .map withoutFromPath
 
-  filesToCopy.subscribe \
-    (f) -> console.log "added #{f}"; cb(),
-    (e) -> console.log "error #{e.message}"
+  ongoingCopy.subscribe(
+    (f) ->
+      logger.info "onNext: #{f}"
+    (e) ->
+      logger.info "onError: #{e}"
+    () ->
+      logger.info "onCompleted"
+  )
 
-  filesToDelete = unlinks
-    .merge(errors)
-    .map (f) -> path.basename f
-
-  watcher.on "change", (f) -> console.log "changed #{f}"
-  watcher.on "unlink", (f) -> console.log "unlinked #{f}"
-  #watcher.on "add", (f) -> console.log "added #{f}"; cb()
-  watcher.on "error", (error) -> console.log "error #{error}"
+  #filesToDelete = unlinks
+  #  .merge(errors)
+  #  .map (f) -> path.basename f
 
 excludeStrategies =
   string:
@@ -87,7 +117,7 @@ excludeStrategies =
     identity: _.isRegExp
     predicate: (ex, path) -> ex.test path
 
-isExcluded = (path, excludes) ->
+isExcludedByConfig = (path, excludes) ->
   ofType = (method) ->
     excludes.filter (f) -> method(f)
 

@@ -38,6 +38,6 @@ exports.validate = (config, validators) ->
   {watch: {sourceDir, compiledDir}} = config
   assetIgnorePaths = _.map [sourceDir, compiledDir], (p) -> path.basename p
 
-  config.fubumvc.excludePaths = [].concat.apply excludePaths, assetIgnorePaths
+  config.fubumvc.excludePaths = excludePaths.concat assetIgnorePaths
 
   errors
