@@ -159,9 +159,10 @@ describe "startCopying", ->
       obs.onNext path.join cwd, "content/styles/1.less"
     changes = Rx.Observable.never()
     unlinks = Rx.Observable.never()
-    errors = (Rx.Observable.create (obs) ->
-      obs.onNext {message: "there was an error"}
-      ).selectMany (e) -> Rx.Observable.throw e
+    errors = Rx.Observable.never()
+    #errors = (Rx.Observable.create (obs) ->
+    #  obs.onNext {message: "there was an error"}
+    #  ).selectMany (e) -> Rx.Observable.throw e
 
     {numberOfFiles, adds, changes, unlinks, errors}
 

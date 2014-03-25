@@ -17,6 +17,7 @@ cwd = process.cwd()
 Rx = require "rx"
 
 importAssets = (mimosaConfig, options, next) ->
+  #TODO: include sensible default extensions (.coffee, etc) pull from config somehow?
   extensions = mimosaConfig.extensions.copy
   excludes = mimosaConfig.fubumvc.excludePaths
   isBuild = mimosaConfig.isBuild
@@ -80,6 +81,7 @@ startCopying = (from, extensions, excludes, isBuild, cb) ->
   logger.debug "starting copy from: #{from}"
   logger.debug "extensions: #{extensions}"
   logger.debug "excludes: #{excludes}"
+
   {numberOfFiles, adds, changes, unlinks, errors} =
     prepareFileWatcher from, extensions, excludes, isBuild
 
@@ -91,23 +93,31 @@ startCopying = (from, extensions, excludes, isBuild, cb) ->
   initialCopy = fromSource(adds)
     .take(numberOfFiles)
 
-  deletes = fromSource(unlinks)
-
   initialCopy.subscribe(
     (f) ->
-      logger.debug "intial copy: #{f}"
+      logger.info "initial copy: #{f}"
     (e) ->
       logger.error "error with initial copy: #{e.message}"
       cb() if cb
     () ->
+      logger.info "initial copy complete"
       ongoingCopy = fromSource(adds.merge changes)
       ongoingCopy.subscribe(
         (f) ->
-          logger.debug "copy: #{f}"
+          logger.info "copy: #{f}"
         (e) ->
           logger.debug "error: #{e}"
       )
       cb() if cb
+  )
+
+  deletes = fromSource(unlinks)
+
+  deletes.subscribe(
+    (f) ->
+      logger.info "deleting: #{f}"
+    (e) ->
+      logger.error "error deleting: #{e}"
   )
 
 excludeStrategies =
