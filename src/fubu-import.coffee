@@ -1,64 +1,47 @@
 "use strict"
 
+{log} = require './util'
+color = require('ansi-color').set
 fs = require 'fs'
 path = require 'path'
 watch = require 'chokidar'
 wrench = require 'wrench'
 logger = require 'logmimosa'
 _ = require 'lodash'
-mkdirp = require 'mkdirp'
 parseString = require('xml2js').parseString
-Bliss = require 'bliss'
-bliss = new Bliss
-  ext: ".bliss"
-  cacheEnabled: false,
-  context: {}
 cwd = process.cwd()
 Rx = require "rx"
-
-importAssets = (mimosaConfig, options, next) ->
-  #TODO: include sensible default extensions (.coffee, etc) pull from config somehow?
-  extensions = mimosaConfig.extensions.copy
-  excludes = mimosaConfig.fubumvc.excludePaths
-  isBuild = mimosaConfig.isBuild
-  startCopying cwd, extensions, excludes, isBuild, next
-  #TODO: gather sources
-  #.links, will use parseXml for this
-  #fubu-content
-  #source dir (including content)
-
-cleanAssets = (mimosaConfig, options, next) ->
-  next()
 
 findSourceFiles = (from, extensions, excludes) ->
   wrench.readdirSyncRecursive(from)
     .filter (f) ->
-      isIncluded = shouldInclude f, extensions, excludes
       isFile = fs.statSync(f).isFile()
+      isIncluded = shouldInclude f, isFile, extensions, excludes
       isIncluded and isFile
 
-shouldInclude = (f, extensions, excludes) ->
+shouldInclude = (f, isFile, extensions, excludes) ->
   #TODO: only adds the . to you for extensions if its left off
   extensions = extensions.map (ext) -> ".#{ext}"
-  atRoot = f.indexOf(path.sep) == -1
-  matchesExtension = _.contains extensions, path.extname f
+  ext = path.extname f
+  matchesExtension = not isFile or _.contains extensions, ext
+  atRoot = isFile and f.indexOf(path.sep) == -1
   excluded = isExcludedByConfig f, excludes
   matchesExtension and not excluded and not atRoot
+
+withoutFromPath = (fromPath) ->
+  (input) -> input.replace "#{fromPath}#{path.sep}", ''
 
 prepareFileWatcher = (from, extensions, excludes, isBuild) ->
   #TODO: no more sync calls
   files  = findSourceFiles from, extensions, excludes
   numberOfFiles  = files.length
-  fixPath = (input) -> withoutFromPath input, from
+  fixPath = withoutFromPath from
 
   watchSettings =
     ignored: (file) ->
-      isDirectory = fs.statSync(file).isDirectory()
-      if isDirectory
-        false
-      else
-        f = fixPath file
-        not (shouldInclude f, extensions, excludes)
+      isFile = fs.statSync(file).isFile()
+      f = fixPath file
+      not (shouldInclude f, isFile, extensions, excludes)
     pesistent: not isBuild
     usePolling: true
     interval: 500
@@ -74,18 +57,15 @@ prepareFileWatcher = (from, extensions, excludes, isBuild) ->
   errors = (observableFor "error").selectMany (e) -> Rx.Observable.Throw e
   {numberOfFiles, adds, changes, unlinks, errors}
 
-withoutFromPath = (input, fromPath) ->
-  input.replace "#{fromPath}#{path.sep}", ''
-
 startCopying = (from, extensions, excludes, isBuild, cb) ->
-  logger.debug "starting copy from: #{from}"
-  logger.debug "extensions: #{extensions}"
-  logger.debug "excludes: #{excludes}"
+  log "debug", "starting copy from [[ #{from} ]]"
+  log "debug", "allowed extensions [[ #{extensions} ]]"
+  log "debug", "excludes [[ #{excludes} ]]"
 
   {numberOfFiles, adds, changes, unlinks, errors} =
     prepareFileWatcher from, extensions, excludes, isBuild
 
-  fixPath = (input) -> withoutFromPath input, from
+  fixPath = withoutFromPath from
 
   fromSource = (obs) ->
     obs.merge(errors).map fixPath
@@ -93,20 +73,24 @@ startCopying = (from, extensions, excludes, isBuild, cb) ->
   initialCopy = fromSource(adds)
     .take(numberOfFiles)
 
+  logSuccess = (f) ->
+      log "success", "#{color("copy", "green")} [[ #{f} ]]"
+  logError = (e) ->
+      log "error", "error copying [[ #{e} ]]"
+
   initialCopy.subscribe(
     (f) ->
-      logger.info "initial copy: #{f}"
+      logSuccess f
     (e) ->
-      logger.error "error with initial copy: #{e.message}"
+      logError e
       cb() if cb
     () ->
-      logger.info "initial copy complete"
       ongoingCopy = fromSource(adds.merge changes)
       ongoingCopy.subscribe(
         (f) ->
-          logger.info "copy: #{f}"
+          logSuccess f
         (e) ->
-          logger.debug "error: #{e}"
+          logError e
       )
       cb() if cb
   )
@@ -115,9 +99,9 @@ startCopying = (from, extensions, excludes, isBuild, cb) ->
 
   deletes.subscribe(
     (f) ->
-      logger.info "deleting: #{f}"
+      log "success", "#{color("deleting", "red")} [[ #{f} ]]"
     (e) ->
-      logger.error "error deleting: #{e}"
+      log "error", "error deleting [[ #{e} ]]"
   )
 
 excludeStrategies =
@@ -135,45 +119,6 @@ isExcludedByConfig = (path, excludes) ->
   _.any excludeStrategies, ({identity, predicate}) ->
     _.any (ofType identity), (ex) -> predicate ex, path
 
-relativeToThisFile = (filePath, dirname) ->
-  dirname ?= __dirname
-  path.join dirname, filePath
-
-setupFileSystem = (args) ->
-  makeFolders()
-  initFiles(args)
-
-makeFolders = ->
-  folders = ['assets/scripts', 'assets/styles', 'public']
-  _.each folders, (dir) ->
-    logger.info "making sure #{dir} exists"
-    mkdirp.sync dir, (err) ->
-      logger.error(err)
-
-initFiles = (flags = false) ->
-  useCoffee = flags == "coffee"
-  ext = if useCoffee then "coffee" else "js"
-  files = ["bower.json", "mimosa-config.#{ext}"]
-  viewModel =
-    name: path.basename cwd
-  contents = _ files
-    .map (f) -> relativeToThisFile "../fubu-import-templates/#{f}"
-    .map (f) -> bliss.render f, viewModel
-    .map (f) -> f.trim()
-    .value()
-  fileWithContents = _.zip(files, contents)
-
-  _.each fileWithContents, (pair) ->
-    copyContents pair
-  #avoid returning an array of nothing when using a comprehension as your last line
-  #by using an explicit return
-  return
-
-copyContents = ([fileName, contents]) ->
-  unless fs.existsSync fileName
-    logger.info "creating #{fileName}"
-    fs.writeFileSync fileName, contents
-
 parseXml = (filePath) ->
   contents = fs.readFileSync filePath
   result = {}
@@ -181,4 +126,18 @@ parseXml = (filePath) ->
     result = output
   result
 
-module.exports = {importAssets, cleanAssets, setupFileSystem}
+importAssets = (mimosaConfig, options, next) ->
+  #TODO: include sensible default extensions (.coffee, etc) pull from config somehow?
+  extensions = mimosaConfig.extensions.copy
+  excludes = mimosaConfig.fubumvc.excludePaths
+  isBuild = mimosaConfig.isBuild
+  startCopying cwd, extensions, excludes, isBuild, next
+  #TODO: gather sources
+  #.links, will use parseXml for this
+  #fubu-content
+  #source dir (including content)
+
+cleanAssets = (mimosaConfig, options, next) ->
+  next()
+
+module.exports = {importAssets, cleanAssets}

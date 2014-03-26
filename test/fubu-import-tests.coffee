@@ -1,15 +1,15 @@
-rewire = require("rewire")
-chai = require("chai")
-fubuImport = rewire("../lib/fubu-import.js")
+rewire = require "rewire"
+chai = require "chai"
 expect = chai.expect
-_ = require("lodash")
+_ = require "lodash"
 path = require 'path'
 Rx = require "rx"
+fubuImport = rewire "../lib/fubu-import.js"
 
 describe "fubu-import module", ->
   describe 'exports', ->
     rawFubuImport = require ("../lib/fubu-import.js")
-    functions = ["importAssets", "cleanAssets", "setupFileSystem"]
+    functions = ["importAssets", "cleanAssets"]
     ensureIsFunction = (functionName) ->
       it "should export #{functionName}", ->
         expect(typeof rawFubuImport[functionName]).to.equal("function")
@@ -20,53 +20,6 @@ describe "fubu-import module", ->
       #rewire puts extra properties on the module that won't be there when its 'required'
       _.each rawFubuImport, (value, key) ->
         expect(_.contains functions, key).to.equal true
-
-describe "relative paths", ->
-  relativeToThisFile = fubuImport.__get__ "relativeToThisFile"
-  it "can be provided by directory", ->
-    sep = path.sep
-    fakeDirname = "path#{sep}to#{sep}file"
-    fileName = "test.txt"
-    expect(relativeToThisFile fileName, fakeDirname).to.equal "#{fakeDirname}#{sep}#{fileName}"
-
-describe "initFiles", ->
-  initFiles = fubuImport.__get__ "initFiles"
-
-  writesFiles = (output, flags) ->
-    writtenFiles = []
-    fs =
-      existsSync: (fileName) ->
-        false
-      writeFileSync: (fileName) -> writtenFiles.push fileName
-    fubuImport.__set__ {fs}
-    initFiles(flags)
-    expect(writtenFiles).to.eql output
-
-  it "writes files", ->
-    writesFiles ["bower.json", "mimosa-config.js"]
-
-  it "uses .coffee extension for files when coffee flag is passed", ->
-    writesFiles ["bower.json", "mimosa-config.coffee"], "coffee"
-
-  it "only writes files if they don't exist already", ->
-    fs =
-      existsSync: (fileName) ->
-        true
-      writeFileSync: (args) -> chai.assert.fail(null, null, "should not write files")
-    fubuImport.__set__ {fs}
-    initFiles()
-
-describe "makeFolders", ->
-  makeFolders = fubuImport.__get__ "makeFolders"
-  createdFolders = []
-  mkdirp =
-    sync: (fileName) ->
-      createdFolders.push fileName
-
-  it "creates assets/{scripts,styles} and public folder for you", ->
-    fubuImport.__set__ {mkdirp}
-    makeFolders()
-    expect(createdFolders).to.eql ['assets/scripts', 'assets/styles', 'public']
 
 describe "parseXml", ->
   parseXml = fubuImport.__get__ "parseXml"
@@ -85,7 +38,7 @@ describe "findSourceFiles", ->
   findSourceFiles = fubuImport.__get__ "findSourceFiles"
   fs =
     statSync: (file) ->
-      isFile: -> true
+      isFile: -> file isnt "one"
 
   files = -> #empty for now, set by individual tests
 
@@ -148,6 +101,7 @@ describe "isExcludedByConfig", ->
     result = isExcludedByConfig "other/folder/somefile.txt", excludes
     expect(result).to.equal false
 
+#TODO: come up with something to reset the mocks that stick around with __set__
 describe "startCopying", ->
   startCopying = fubuImport.__get__ "startCopying"
   cwd = process.cwd()
