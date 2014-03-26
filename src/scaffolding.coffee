@@ -1,7 +1,7 @@
 "use strict"
-mkdirp = require 'mkdirp'
 fs = require 'fs'
 path = require 'path'
+wrench = require 'wrench'
 _ = require 'lodash'
 {log, relativeToThisFile} = require './util'
 Bliss = require 'bliss'
@@ -18,9 +18,9 @@ setupFileSystem = (args) ->
 makeFolders = ->
   folders = ['assets/scripts', 'assets/styles', 'public']
   _.each folders, (dir) ->
-    log "info", "making sure #{dir} exists"
-    mkdirp.sync dir, (err) ->
-      log "error", "error making folders [[ #{err} ]]"
+    unless fs.existsSync dir
+      log "info", "creating #{dir}"
+      wrench.mkdirSyncRecursive dir, 0o0777
 
 initFiles = (flags = false) ->
   useCoffee = flags == "coffee"

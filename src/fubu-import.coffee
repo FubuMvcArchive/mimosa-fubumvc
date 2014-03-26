@@ -57,14 +57,7 @@ prepareFileWatcher = (from, extensions, excludes, isBuild) ->
   errors = (observableFor "error").selectMany (e) -> Rx.Observable.Throw e
   {numberOfFiles, adds, changes, unlinks, errors}
 
-startCopying = (from, extensions, excludes, isBuild, cb) ->
-  log "debug", "starting copy from [[ #{from} ]]"
-  log "debug", "allowed extensions [[ #{extensions} ]]"
-  log "debug", "excludes [[ #{excludes} ]]"
-
-  {numberOfFiles, adds, changes, unlinks, errors} =
-    prepareFileWatcher from, extensions, excludes, isBuild
-
+startWatching = (from, {numberOfFiles, adds, changes, unlinks, errors}, cb) ->
   fixPath = withoutFromPath from
 
   fromSource = (obs) ->
@@ -73,24 +66,17 @@ startCopying = (from, extensions, excludes, isBuild, cb) ->
   initialCopy = fromSource(adds)
     .take(numberOfFiles)
 
-  logSuccess = (f) ->
-      log "success", "#{color("copy", "green")} [[ #{f} ]]"
-  logError = (e) ->
-      log "error", "error copying [[ #{e} ]]"
-
   initialCopy.subscribe(
-    (f) ->
-      logSuccess f
+    (f) -> copyFile f
     (e) ->
-      logError e
+      log "warn", "File watching error: #{e}"
       cb() if cb
     () ->
       ongoingCopy = fromSource(adds.merge changes)
       ongoingCopy.subscribe(
-        (f) ->
-          logSuccess f
+        (f) -> copyFile f
         (e) ->
-          logError e
+          log "warn", "File watching error: #{e}"
       )
       cb() if cb
   )
@@ -98,11 +84,39 @@ startCopying = (from, extensions, excludes, isBuild, cb) ->
   deletes = fromSource(unlinks)
 
   deletes.subscribe(
-    (f) ->
-      log "success", "#{color("deleting", "red")} [[ #{f} ]]"
+    (f) -> deleteFile f
     (e) ->
       log "error", "error deleting [[ #{e} ]]"
   )
+
+copyFile = (file) ->
+  fs.readFile file, (err, data) ->
+    if err
+      log "error", "Error reading file [[ #{file} ]], #{err}"
+      return
+
+    #TODO: conventions for where to put files
+    outFile = file
+    dirname = path.dirname outFile
+    unless fs.existsSync dirname
+      wrench.mkdirSyncRecursive dirname, 0o0777
+
+    fs.writeFile outFile, data, (err) ->
+      if err
+        log "error", "Error reading file [[ #{file} ]], #{err}"
+      else
+        log "info", "File copied to destination [[ #{outFile} ]]."
+
+deleteFile = (file) ->
+  #TODO: reverse conventions for how to get path back
+  outFile = file
+  fs.exists outFile, (exists) ->
+    if exists
+      fs.unlink outFile, (err) ->
+        if err
+          log "error", "Error deleting file [[ #{outFile} ]], #{err}"
+        else
+          log "info", "File [[ #{outFile} ]] deleted."
 
 excludeStrategies =
   string:
@@ -127,11 +141,16 @@ parseXml = (filePath) ->
   result
 
 importAssets = (mimosaConfig, options, next) ->
-  #TODO: include sensible default extensions (.coffee, etc) pull from config somehow?
-  extensions = mimosaConfig.extensions.copy
-  excludes = mimosaConfig.fubumvc.excludePaths
-  isBuild = mimosaConfig.isBuild
-  startCopying cwd, extensions, excludes, isBuild, next
+  extensions = mimosaConfig?.extensions?.copy || []
+  excludes = mimosaConfig?.fubumvc?.excludePaths || []
+  isBuild = mimosaConfig?.isBuild || true
+
+  log "debug", "importing assets"
+  log "debug", "allowed extensions [[ #{extensions} ]]"
+  log "debug", "excludes [[ #{excludes} ]]"
+
+  fileWatcher = prepareFileWatcher cwd, extensions, excludes, isBuild
+  startWatching cwd, fileWatcher, next
   #TODO: gather sources
   #.links, will use parseXml for this
   #fubu-content

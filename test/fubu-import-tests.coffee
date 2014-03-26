@@ -1,10 +1,10 @@
-rewire = require "rewire"
+{rewireWithReset} = require "../lib/util.js"
 chai = require "chai"
 expect = chai.expect
 _ = require "lodash"
 path = require 'path'
 Rx = require "rx"
-fubuImport = rewire "../lib/fubu-import.js"
+fubuImport = rewireWithReset "../lib/fubu-import.js"
 
 describe "fubu-import module", ->
   describe 'exports', ->
@@ -28,11 +28,12 @@ describe "parseXml", ->
       "<tag><numbers>one</numbers><numbers>two</numbers></tag>"
 
   it "can produce javascript object from xml", ->
-    fubuImport.__set__ {fs}
+    undo = fubuImport.__tempSet__ {fs}
     numbers = ["one","two"]
     output = parseXml 'test.xml'
     expect(output).to.have.deep.property("tag.numbers[0]", 'one')
     expect(output).to.have.deep.property("tag.numbers[1]", 'two')
+    undo()
 
 describe "findSourceFiles", ->
   findSourceFiles = fubuImport.__get__ "findSourceFiles"
@@ -53,9 +54,10 @@ describe "findSourceFiles", ->
       "mimosa.config.coffee",
     ]
     files = -> expected
-    fubuImport.__set__ {fs, wrench}
+    undo = fubuImport.__tempSet__ {fs, wrench}
     result = findSourceFiles ".", ["js", "json", "coffee"], [] #empty excludes
     expect(result).to.eql []
+    undo()
 
   it "finds only the files that match extensions", ->
     expected = [
@@ -69,9 +71,10 @@ describe "findSourceFiles", ->
        (path.join "one", "2.txt"),
        (path.join "one", "two", "3.doc"),
       ]
-    fubuImport.__set__ {fs, wrench}
+    undo = fubuImport.__tempSet__ {fs, wrench}
     result = findSourceFiles ".", ["js", "less", "sass"], [] #empty excludes
     expect(result).to.eql expected
+    undo()
 
   it "doesn't pick up excluded things", ->
     files = ->
@@ -80,10 +83,11 @@ describe "findSourceFiles", ->
        (path.join "bin", "StructureMap.xml"),
        (path.join "obj", "Debug", "test.txt")
       ]
-    fubuImport.__set__ {fs, wrench}
+    undo = fubuImport.__tempSet__ {fs, wrench}
     excludes = ["bin", "obj", /^\./]
     result = findSourceFiles ".", ["json", "js", "xml", "txt"], excludes
     expect(result).to.eql []
+    undo()
 
 describe "isExcludedByConfig", ->
   isExcludedByConfig = fubuImport.__get__ "isExcludedByConfig"
@@ -102,10 +106,10 @@ describe "isExcludedByConfig", ->
     expect(result).to.equal false
 
 #TODO: come up with something to reset the mocks that stick around with __set__
-describe "startCopying", ->
-  startCopying = fubuImport.__get__ "startCopying"
+describe "startWatching", ->
+  startWatching = fubuImport.__get__ "startWatching"
   cwd = process.cwd()
-  prepareFileWatcher = () ->
+  fileWatcher = do ->
     numberOfFiles = 3
     adds = Rx.Observable.create (obs) ->
       obs.onNext path.join cwd, "mimosa-config.js"
@@ -114,14 +118,9 @@ describe "startCopying", ->
     changes = Rx.Observable.never()
     unlinks = Rx.Observable.never()
     errors = Rx.Observable.never()
-    #errors = (Rx.Observable.create (obs) ->
-    #  obs.onNext {message: "there was an error"}
-    #  ).selectMany (e) -> Rx.Observable.throw e
 
     {numberOfFiles, adds, changes, unlinks, errors}
 
-  fubuImport.__set__ {prepareFileWatcher}
-
   it "does", (done) ->
-    startCopying(cwd, [], [], true, done)
+    startWatching cwd, fileWatcher, done
 
