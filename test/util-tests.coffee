@@ -4,7 +4,7 @@ expect = chai.expect
 _ = require "lodash"
 path = require "path"
 
-util = rewire("../lib/util.js")
+util = rewire "../lib/util.js"
 
 describe "relative paths", ->
   relativeToThisFile = util.__get__ "relativeToThisFile"

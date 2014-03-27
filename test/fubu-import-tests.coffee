@@ -5,7 +5,7 @@ _ = require "lodash"
 path = require 'path'
 Rx = require "rx"
 fubuImport = rewirez "../lib/fubu-import.js"
-fubuImport.__set__ "log", () ->
+fubuImport.__set__ "log", (->)
 
 describe "fubu-import module", ->
   describe 'exports', ->
@@ -189,4 +189,19 @@ describe "transformPath", ->
     file = "2.js"
     result = transformPath file, {sourceDir, conventions}
     expect(result).to.equal path.join sourceDir, "v1", "scripts", file
+
+describe "buildExtensions", ->
+  buildExtensions = fubuImport.__get__ "buildExtensions"
+
+  it "builds list of acceptable extensions from mimosa config", ->
+    copy = ['js', 'css', 'mp3']
+    js = ['js', 'coffee']
+    css = ['css', 'less']
+    fakeConfig =
+      watch: {sourceDir: "assets", compiledDir: "public"}
+      fubumvc: {excludePaths: [], conventions: []}
+      extensions: {copy, js, css}
+    result = buildExtensions fakeConfig
+    expect(result).to.eql ['js', 'css', 'mp3', 'less']
+
 

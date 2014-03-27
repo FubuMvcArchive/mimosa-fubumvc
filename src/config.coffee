@@ -15,10 +15,13 @@ exports.placeholder = ->
   # fubumvc:
     # excludePaths: ["bin", "obj", /^\./]
     # conventions: [
-      # {
-        # match: (file, ext) -> true #filename and extension, return true/false,
-        # transform: (file, path) -> file #is filename, path is path module
-        # }
+      # provide 0 or more conventions
+      # { 
+        # match: (file, ext) ->
+          # true #filename and extension, return true/false,
+        # transform: (file, path) ->
+          # file #filename and path module to do path.join, etc
+      # }
     # ]
   """
 
@@ -29,28 +32,37 @@ exports.validate = (config, validators) ->
     errors.push "fubumvc config"
     return errors
 
-  {excludePaths} = fubumvc
+  {excludePaths, conventions} = fubumvc
+
   unless excludePaths? and _.isArray excludePaths
     errors.push "fubumvc.excludePaths"
     return errors
 
-  allItemsOk = _.all excludePaths, (item) ->
+  excludePathsOk = _.all excludePaths, (item) ->
     _.isString(item) or _.isRegExp(item)
 
-  unless allItemsOk
+  unless excludePathsOk
     errors.push "fubumvc.excludePaths entries must be either strings or regexes"
     return errors
 
-  #TODO: validation for conventions
+  unless conventions? and _.isArray conventions
+    errors.push "fubumvc.conventions"
+    return errors
+
+  conventionsOk = _.all conventions, (item) ->
+    _.isObject(item) and _.all ["match", "transform"], (func) -> _.isFunction item[func]
+
+  unless conventionsOk
+    errors.push "fubumvc.conventions entries must be objects with match: (file, ext) -> and transform: (file, path) ->"
+    return errors
 
   #auto-include the sourceDir and compiledDir into excludePaths list
   {watch: {sourceDir, compiledDir}} = config
-  ignorePaths = _.map [sourceDir, compiledDir], (p) -> path.basename p
+  ignorePaths = _.map [sourceDir, compiledDir, 'node_modules'], (p) -> path.basename p
 
   config.fubumvc.excludePaths = excludePaths.concat ignorePaths
   config.fubumvc.sourceDir = sourceDir
   config.fubumvc.compiledDir = compiledDir
-  config.fubumvc.extensions = config.extensions?.copy || []
   config.fubumvc.isBuild = config.isBuild
 
   errors

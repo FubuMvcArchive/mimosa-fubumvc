@@ -61,6 +61,7 @@ startWatching = (
   {numberOfFiles, adds, changes, unlinks, errors},
   options,
   cb) ->
+
   fixPath = withoutPath from
 
   fromSource = (obs) ->
@@ -148,9 +149,15 @@ parseXml = (filePath) ->
     result = output
   result
 
+buildExtensions = (config) ->
+  {copy, javascript, css} = config.extensions
+  extensions = _.union copy, javascript, css
+
 importAssets = (mimosaConfig, options, next) ->
   {extensions, excludePaths, sourceDir, compiledDir, isBuild, conventions} =
     mimosaConfig.fubumvc
+
+  extensions = buildExtensions mimosaConfig
 
   log "debug", "importing assets"
   log "debug", "allowed extensions [[ #{extensions} ]]"
@@ -160,8 +167,6 @@ importAssets = (mimosaConfig, options, next) ->
   startWatching cwd, fileWatcher, {sourceDir, conventions}, next
   #TODO: gather sources
   #.links, will use parseXml for this
-  #fubu-content
-  #source dir (including content)
 
 cleanAssets = (mimosaConfig, options, next) ->
   next()

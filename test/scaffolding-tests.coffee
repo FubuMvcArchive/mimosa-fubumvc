@@ -4,7 +4,7 @@ expect = chai.expect
 _ = require "lodash"
 path = require 'path'
 scaffolding = rewirez "../lib/scaffolding.js"
-scaffolding.__set__ "log", () ->
+scaffolding.__set__ "log", (->)
 
 describe "initFiles", ->
   initFiles = scaffolding.__get__ "initFiles"
