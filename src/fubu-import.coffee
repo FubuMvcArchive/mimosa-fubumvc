@@ -6,7 +6,6 @@ fs = require 'fs'
 path = require 'path'
 watch = require 'chokidar'
 wrench = require 'wrench'
-logger = require 'logmimosa'
 _ = require 'lodash'
 parseString = require('xml2js').parseString
 cwd = process.cwd()
@@ -42,7 +41,7 @@ prepareFileWatcher = (from, extensions, excludes, isBuild) ->
       isFile = fs.statSync(file).isFile()
       f = fixPath file
       not (shouldInclude f, isFile, extensions, excludes)
-    pesistent: not isBuild
+    persistent: not isBuild
     usePolling: true
     interval: 500
     binaryInterval: 1000
@@ -54,7 +53,7 @@ prepareFileWatcher = (from, extensions, excludes, isBuild) ->
   adds = observableFor "add"
   changes = observableFor "change"
   unlinks = observableFor "unlink"
-  errors = (observableFor "error").selectMany (e) -> Rx.Observable.Throw e
+  errors = (observableFor "error").selectMany (e) -> Rx.Observable.throw e
   {numberOfFiles, adds, changes, unlinks, errors}
 
 startWatching = (from, {numberOfFiles, adds, changes, unlinks, errors}, cb) ->
@@ -67,7 +66,8 @@ startWatching = (from, {numberOfFiles, adds, changes, unlinks, errors}, cb) ->
     .take(numberOfFiles)
 
   initialCopy.subscribe(
-    (f) -> copyFile f
+    (f) ->
+      copyFile f
     (e) ->
       log "warn", "File watching error: #{e}"
       cb() if cb
@@ -75,8 +75,7 @@ startWatching = (from, {numberOfFiles, adds, changes, unlinks, errors}, cb) ->
       ongoingCopy = fromSource(adds.merge changes)
       ongoingCopy.subscribe(
         (f) -> copyFile f
-        (e) ->
-          log "warn", "File watching error: #{e}"
+        (e) -> log "warn", "File watching error: #{e}"
       )
       cb() if cb
   )
@@ -85,8 +84,7 @@ startWatching = (from, {numberOfFiles, adds, changes, unlinks, errors}, cb) ->
 
   deletes.subscribe(
     (f) -> deleteFile f
-    (e) ->
-      log "error", "error deleting [[ #{e} ]]"
+    (e) -> log "warn", "File watching errors: #{e}"
   )
 
 copyFile = (file) ->
@@ -105,7 +103,7 @@ copyFile = (file) ->
       if err
         log "error", "Error reading file [[ #{file} ]], #{err}"
       else
-        log "info", "File copied to destination [[ #{outFile} ]]."
+        log "success", "File copied to destination [[ #{outFile} ]]."
 
 deleteFile = (file) ->
   #TODO: reverse conventions for how to get path back
@@ -116,7 +114,7 @@ deleteFile = (file) ->
         if err
           log "error", "Error deleting file [[ #{outFile} ]], #{err}"
         else
-          log "info", "File [[ #{outFile} ]] deleted."
+          log "success", "File [[ #{outFile} ]] deleted."
 
 excludeStrategies =
   string:

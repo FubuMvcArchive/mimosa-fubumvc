@@ -42,6 +42,6 @@
   "main": "./lib/index",
   "scripts": {
     "prepublish": "mimosa build",
-    "test": "mocha --compilers coffee:coffee-script/register --reporter min --require coffee-script --colors"
+    "test": "mocha"
   }
 }

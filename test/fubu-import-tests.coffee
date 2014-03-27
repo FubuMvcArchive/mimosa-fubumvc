@@ -105,22 +105,65 @@ describe "isExcludedByConfig", ->
     result = isExcludedByConfig "other/folder/somefile.txt", excludes
     expect(result).to.equal false
 
-#TODO: come up with something to reset the mocks that stick around with __set__
 describe "startWatching", ->
   startWatching = fubuImport.__get__ "startWatching"
   cwd = process.cwd()
-  fileWatcher = do ->
-    numberOfFiles = 3
-    adds = Rx.Observable.create (obs) ->
-      obs.onNext path.join cwd, "mimosa-config.js"
-      obs.onNext path.join cwd, "content/scripts/1.js"
-      obs.onNext path.join cwd, "content/styles/1.less"
-    changes = Rx.Observable.never()
-    unlinks = Rx.Observable.never()
-    errors = Rx.Observable.never()
+  fullPath = (f) -> path.join cwd, f
+  expected =  [
+    "mimosa-config.js",
+    path.join "content", "scripts", "1.js"
+    path.join "content", "styles", "1.less"
+  ]
+  files = (fullPath file for file in expected)
+  copiedFiles = []
+  copyFile = (f) ->
+    copiedFiles.push f
 
-    {numberOfFiles, adds, changes, unlinks, errors}
+  it "calls copyFile for each value pushed from adds collection up to numberOfFiles worth of files", (done) ->
+    addsObservable = Rx.Observable.never()
+    fileWatcher = do ->
+      numberOfFiles = 3
+      adds = Rx.Observable.create (obs) ->
+        addsObservable = obs
+      changes = Rx.Observable.never()
+      unlinks = Rx.Observable.never()
+      errors = Rx.Observable.never()
 
-  it "does", (done) ->
-    startWatching cwd, fileWatcher, done
+      {numberOfFiles, adds, changes, unlinks, errors}
+
+    undo = fubuImport.__tempSet__ {copyFile}
+    cb = () ->
+      expect(copiedFiles).to.eql expected
+      undo()
+      done()
+    startWatching cwd, fileWatcher, cb
+    _.each files, (f) -> addsObservable.onNext(f)
+
+  it "stops when an error event happens", (done) ->
+    copiedFiles = []
+    addsObservable = Rx.Observable.never()
+    errorsObservable = Rx.Observable.never()
+    fileWatcher = do ->
+      numberOfFiles = 3
+      adds = Rx.Observable.create (obs) ->
+        addsObservable = obs
+      changes = Rx.Observable.never()
+      unlinks = Rx.Observable.never()
+      errors = Rx.Observable.create (obs) ->
+        errorsObservable = obs
+
+      {numberOfFiles, adds, changes, unlinks, errors}
+
+    undo = fubuImport.__tempSet__ {copyFile}
+    cb = () ->
+      expect(copiedFiles).to.eql []
+      undo()
+      done()
+    startWatching cwd, fileWatcher, cb
+    setTimeout ->
+      addsObservable.onNext(files[0])
+      errorsObservable.onNext({message: "error!"})
+      addsObservable.onNext(files[1])
+      addsObservable.onNext(files[2])
+
 
