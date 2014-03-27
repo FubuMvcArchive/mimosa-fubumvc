@@ -6,6 +6,7 @@ path = require 'path'
 exports.defaults = ->
   fubumvc:
     excludePaths: ["bin", "obj", /^\./]
+    conventions: []
 
 exports.placeholder = ->
   """
@@ -13,6 +14,12 @@ exports.placeholder = ->
 
   # fubumvc:
     # excludePaths: ["bin", "obj", /^\./]
+    # conventions: [
+      # {
+        # match: (file, ext) -> true #filename and extension, return true/false,
+        # transform: (file, path) -> file #is filename, path is path module
+        # }
+    # ]
   """
 
 exports.validate = (config, validators) ->
@@ -34,10 +41,16 @@ exports.validate = (config, validators) ->
     errors.push "fubumvc.excludePaths entries must be either strings or regexes"
     return errors
 
+  #TODO: validation for conventions
+
   #auto-include the sourceDir and compiledDir into excludePaths list
   {watch: {sourceDir, compiledDir}} = config
-  assetIgnorePaths = _.map [sourceDir, compiledDir], (p) -> path.basename p
+  ignorePaths = _.map [sourceDir, compiledDir], (p) -> path.basename p
 
-  config.fubumvc.excludePaths = excludePaths.concat assetIgnorePaths
+  config.fubumvc.excludePaths = excludePaths.concat ignorePaths
+  config.fubumvc.sourceDir = sourceDir
+  config.fubumvc.compiledDir = compiledDir
+  config.fubumvc.extensions = config.extensions?.copy || []
+  config.fubumvc.isBuild = config.isBuild
 
   errors

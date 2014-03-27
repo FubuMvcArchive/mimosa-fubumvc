@@ -27,14 +27,14 @@ shouldInclude = (f, isFile, extensions, excludes) ->
   excluded = isExcludedByConfig f, excludes
   matchesExtension and not excluded and not atRoot
 
-withoutFromPath = (fromPath) ->
+withoutPath = (fromPath) ->
   (input) -> input.replace "#{fromPath}#{path.sep}", ''
 
 prepareFileWatcher = (from, extensions, excludes, isBuild) ->
   #TODO: no more sync calls
   files  = findSourceFiles from, extensions, excludes
   numberOfFiles  = files.length
-  fixPath = withoutFromPath from
+  fixPath = withoutPath from
 
   watchSettings =
     ignored: (file) ->
@@ -56,8 +56,12 @@ prepareFileWatcher = (from, extensions, excludes, isBuild) ->
   errors = (observableFor "error").selectMany (e) -> Rx.Observable.throw e
   {numberOfFiles, adds, changes, unlinks, errors}
 
-startWatching = (from, {numberOfFiles, adds, changes, unlinks, errors}, cb) ->
-  fixPath = withoutFromPath from
+startWatching = (
+  from,
+  {numberOfFiles, adds, changes, unlinks, errors},
+  options,
+  cb) ->
+  fixPath = withoutPath from
 
   fromSource = (obs) ->
     obs.merge(errors).map fixPath
@@ -67,14 +71,14 @@ startWatching = (from, {numberOfFiles, adds, changes, unlinks, errors}, cb) ->
 
   initialCopy.subscribe(
     (f) ->
-      copyFile f
+      copyFile f, options
     (e) ->
       log "warn", "File watching error: #{e}"
       cb() if cb
     () ->
       ongoingCopy = fromSource(adds.merge changes)
       ongoingCopy.subscribe(
-        (f) -> copyFile f
+        (f) -> copyFile f, options
         (e) -> log "warn", "File watching error: #{e}"
       )
       cb() if cb
@@ -83,18 +87,18 @@ startWatching = (from, {numberOfFiles, adds, changes, unlinks, errors}, cb) ->
   deletes = fromSource(unlinks)
 
   deletes.subscribe(
-    (f) -> deleteFile f
+    (f) -> deleteFile f, options
     (e) -> log "warn", "File watching errors: #{e}"
   )
 
-copyFile = (file) ->
+copyFile = (file, options) ->
   fs.readFile file, (err, data) ->
     if err
       log "error", "Error reading file [[ #{file} ]], #{err}"
       return
 
-    #TODO: conventions for where to put files
-    outFile = file
+    outFile = transformPath file, options
+
     dirname = path.dirname outFile
     unless fs.existsSync dirname
       wrench.mkdirSyncRecursive dirname, 0o0777
@@ -105,9 +109,8 @@ copyFile = (file) ->
       else
         log "success", "File copied to destination [[ #{outFile} ]]."
 
-deleteFile = (file) ->
-  #TODO: reverse conventions for how to get path back
-  outFile = file
+deleteFile = (file, options) ->
+  outFile = transformPath file, options
   fs.exists outFile, (exists) ->
     if exists
       fs.unlink outFile, (err) ->
@@ -115,6 +118,13 @@ deleteFile = (file) ->
           log "error", "Error deleting file [[ #{outFile} ]], #{err}"
         else
           log "success", "File [[ #{outFile} ]] deleted."
+
+transformPath = (file, {sourceDir, conventions}) ->
+  result = _.reduce(conventions, (acc, {match, transform}) ->
+    ext = path.extname acc
+    if match acc, ext then transform acc, path else acc
+  , file)
+  path.join sourceDir, result
 
 excludeStrategies =
   string:
@@ -139,16 +149,15 @@ parseXml = (filePath) ->
   result
 
 importAssets = (mimosaConfig, options, next) ->
-  extensions = mimosaConfig?.extensions?.copy || []
-  excludes = mimosaConfig?.fubumvc?.excludePaths || []
-  isBuild = mimosaConfig?.isBuild || true
+  {extensions, excludePaths, sourceDir, compiledDir, isBuild, conventions} =
+    mimosaConfig.fubumvc
 
   log "debug", "importing assets"
   log "debug", "allowed extensions [[ #{extensions} ]]"
-  log "debug", "excludes [[ #{excludes} ]]"
+  log "debug", "excludePaths [[ #{excludePaths} ]]"
 
-  fileWatcher = prepareFileWatcher cwd, extensions, excludes, isBuild
-  startWatching cwd, fileWatcher, next
+  fileWatcher = prepareFileWatcher cwd, extensions, excludePaths, isBuild
+  startWatching cwd, fileWatcher, {sourceDir, conventions}, next
   #TODO: gather sources
   #.links, will use parseXml for this
   #fubu-content

@@ -2,6 +2,7 @@
 
 config = require './config'
 fubuImport = require './fubu-import'
+scaffolding = require './scaffolding'
 logger = require 'logmimosa'
 
 registration = (mimosaConfig, register) ->
@@ -11,9 +12,9 @@ registration = (mimosaConfig, register) ->
 registerCommand = (program, retrieveConfig) ->
   program
     .command('fubu:init')
-    .description("scaffolds initial mimosa files, use -c for coffeescript")
+    .description("bower.json and mimosa-config, 'coffee' flag for coffee")
     .action (args) ->
-      fubuImport.setupFileSystem args
+      scaffolding.setupFileSystem args
 
 module.exports =
   registration:    registration

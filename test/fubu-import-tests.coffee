@@ -1,10 +1,11 @@
-{rewireWithReset} = require "../lib/util.js"
+rewirez = require "./rewirez"
 chai = require "chai"
 expect = chai.expect
 _ = require "lodash"
 path = require 'path'
 Rx = require "rx"
-fubuImport = rewireWithReset "../lib/fubu-import.js"
+fubuImport = rewirez "../lib/fubu-import.js"
+fubuImport.__set__ "log", () ->
 
 describe "fubu-import module", ->
   describe 'exports', ->
@@ -118,6 +119,9 @@ describe "startWatching", ->
   copiedFiles = []
   copyFile = (f) ->
     copiedFiles.push f
+  options =
+    sourceDir: ""
+    conventions: []
 
   it "calls copyFile for each value pushed from adds collection up to numberOfFiles worth of files", (done) ->
     addsObservable = Rx.Observable.never()
@@ -136,21 +140,19 @@ describe "startWatching", ->
       expect(copiedFiles).to.eql expected
       undo()
       done()
-    startWatching cwd, fileWatcher, cb
+    startWatching cwd, fileWatcher, options, cb
     _.each files, (f) -> addsObservable.onNext(f)
 
   it "stops when an error event happens", (done) ->
     copiedFiles = []
     addsObservable = Rx.Observable.never()
-    errorsObservable = Rx.Observable.never()
     fileWatcher = do ->
       numberOfFiles = 3
       adds = Rx.Observable.create (obs) ->
         addsObservable = obs
       changes = Rx.Observable.never()
       unlinks = Rx.Observable.never()
-      errors = Rx.Observable.create (obs) ->
-        errorsObservable = obs
+      errors = Rx.Observable.throw {message: "error!"}
 
       {numberOfFiles, adds, changes, unlinks, errors}
 
@@ -159,11 +161,32 @@ describe "startWatching", ->
       expect(copiedFiles).to.eql []
       undo()
       done()
-    startWatching cwd, fileWatcher, cb
-    setTimeout ->
-      addsObservable.onNext(files[0])
-      errorsObservable.onNext({message: "error!"})
-      addsObservable.onNext(files[1])
-      addsObservable.onNext(files[2])
+    startWatching cwd, fileWatcher, options, cb
+    addsObservable.onNext(files[0])
+    addsObservable.onNext(files[1])
 
+describe "transformPath", ->
+  transformPath = fubuImport.__get__ "transformPath"
+  sourceDir = "assets"
+  testConvention =
+    match: (path, ext) -> true
+    transform: (path) -> path
+
+  it "with no conventions, just prepends the sourceDir", ->
+    conventions = []
+    file =  "1.js"
+    result = transformPath file, {sourceDir, conventions}
+    expect(result).to.equal path.join sourceDir, file
+
+  it "in order, conventions transform results will be passed through each other", ->
+    firstConvention =
+      match: (file, ext) -> true
+      transform: (file) -> path.join "scripts", file
+    secondConvention =
+      match: (file, ext) -> true
+      transform: (file) -> path.join "v1", file
+    conventions = [firstConvention, secondConvention]
+    file = "2.js"
+    result = transformPath file, {sourceDir, conventions}
+    expect(result).to.equal path.join sourceDir, "v1", "scripts", file
 

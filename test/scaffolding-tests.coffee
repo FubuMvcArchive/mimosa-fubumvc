@@ -1,9 +1,10 @@
-{rewireWithReset} = require "../lib/util.js"
+rewirez = require "./rewirez"
 chai = require "chai"
 expect = chai.expect
 _ = require "lodash"
 path = require 'path'
-scaffolding = rewireWithReset "../lib/scaffolding.js"
+scaffolding = rewirez "../lib/scaffolding.js"
+scaffolding.__set__ "log", () ->
 
 describe "initFiles", ->
   initFiles = scaffolding.__get__ "initFiles"
