@@ -88,7 +88,9 @@ startWatching = (
   deletes = fromSource(unlinks)
 
   deletes.subscribe(
-    (f) -> deleteFile f, options
+    (f) ->
+      outFile = transformPath f, options
+      deleteFile outFile
     (e) -> log "warn", "File watching errors: #{e}"
   )
 
@@ -110,15 +112,30 @@ copyFile = (file, options) ->
       else
         log "success", "File copied to destination [[ #{outFile} ]]."
 
-deleteFile = (file, options) ->
-  outFile = transformPath file, options
-  fs.exists outFile, (exists) ->
+deleteFileSync = (file) ->
+  if fs.existsSync file
+    fs.unlinkSync file
+    log "success", "File [[ #{file} ]] deleted."
+
+deleteFile = (file) ->
+  fs.exists file, (exists) ->
     if exists
-      fs.unlink outFile, (err) ->
+      fs.unlink file, (err) ->
         if err
-          log "error", "Error deleting file [[ #{outFile} ]], #{err}"
+          log "error", "Error deleting file [[ #{file} ]], #{err}"
         else
-          log "success", "File [[ #{outFile} ]] deleted."
+          log "success", "File [[ #{file} ]] deleted."
+
+deleteDirectory = (dir, cb) ->
+  if fs.existsSync dir
+    fs.rmdir dir, (err) ->
+      if err?.code is not "ENOTEMPTY"
+        log "error", "Unable to delete directory [[ #{dir} ]]"
+        log "error", err
+      else
+        log "info", "Deleted empty directory [[ #{dir} ]]"
+      cb() if cb
+  else cb() if cb
 
 transformPath = (file, {sourceDir, conventions}) ->
   result = _.reduce(conventions, (acc, {match, transform}) ->
@@ -154,7 +171,7 @@ buildExtensions = (config) ->
   extensions = _.union copy, javascript, css
 
 importAssets = (mimosaConfig, options, next) ->
-  {extensions, excludePaths, sourceDir, compiledDir, isBuild, conventions} =
+  {excludePaths, sourceDir, compiledDir, isBuild, conventions} =
     mimosaConfig.fubumvc
 
   extensions = buildExtensions mimosaConfig
@@ -167,8 +184,35 @@ importAssets = (mimosaConfig, options, next) ->
   startWatching cwd, fileWatcher, {sourceDir, conventions}, next
   #TODO: gather sources
   #.links, will use parseXml for this
+  #
 
 cleanAssets = (mimosaConfig, options, next) ->
-  next()
+  {extensions, excludePaths, sourceDir, compiledDir, isBuild, conventions} =
+    mimosaConfig.fubumvc
+  extensions = buildExtensions mimosaConfig
+  options = {sourceDir, conventions}
+
+  files  = findSourceFiles cwd, extensions, excludePaths
+  outputFiles = _.map files, (f) -> transformPath f, options
+
+  _.each outputFiles, (f) -> deleteFileSync f
+
+  dirs = _ files
+    .map (f) -> transformPath f, options
+    .map (f) -> path.dirname f
+    .sortBy "length"
+    .reverse()
+    .value()
+
+  remainingDirs = [].concat dirs
+  done = (dir) ->
+    remainingDirs = _.without remainingDirs, dir
+    if remainingDirs.length == 0
+      next()
+
+  _ dirs
+    .map (dir) -> [dir, () -> done(dir)]
+    .each ([dir, cb]) ->
+      deleteDirectory dir, cb
 
 module.exports = {importAssets, cleanAssets}
