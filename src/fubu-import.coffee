@@ -14,9 +14,11 @@ Rx = require "rx"
 findSourceFiles = (from, extensions, excludes) ->
   wrench.readdirSyncRecursive(from)
     .filter (f) ->
-      isFile = fs.statSync(f).isFile()
+      originalFile = path.join from, f
+      isFile = fs.statSync(originalFile).isFile()
       isIncluded = shouldInclude f, isFile, extensions, excludes
       isIncluded and isFile
+    .map (f) -> path.join from, f
 
 shouldInclude = (f, isFile, extensions, excludes) ->
   #TODO: only adds the . to you for extensions if its left off
@@ -62,24 +64,21 @@ startWatching = (
   options,
   cb) ->
 
-  fixPath = withoutPath from
-
   fromSource = (obs) ->
-    obs.merge(errors).map fixPath
+    obs.merge(errors)
 
-  initialCopy = fromSource(adds)
-    .take(numberOfFiles)
+  initialCopy = fromSource(adds).take(numberOfFiles)
 
   initialCopy.subscribe(
     (f) ->
-      copyFile f, options
+      copyFile f, from, options
     (e) ->
       log "warn", "File watching error: #{e}"
       cb() if cb
     () ->
       ongoingCopy = fromSource(adds.merge changes)
       ongoingCopy.subscribe(
-        (f) -> copyFile f, options
+        (f) -> copyFile f, from, options
         (e) -> log "warn", "File watching error: #{e}"
       )
       cb() if cb
@@ -89,18 +88,20 @@ startWatching = (
 
   deletes.subscribe(
     (f) ->
-      outFile = transformPath f, options
+      outFile = transformPath f, from, options
       deleteFile outFile
     (e) -> log "warn", "File watching errors: #{e}"
   )
 
-copyFile = (file, options) ->
+copyFile = (file, from, options) ->
   fs.readFile file, (err, data) ->
     if err
       log "error", "Error reading file [[ #{file} ]], #{err}"
       return
 
-    outFile = transformPath file, options
+    console.log "file: #{file}"
+    outFile = transformPath file, from, options
+    console.log "outFile: #{outFile}"
 
     dirname = path.dirname outFile
     unless fs.existsSync dirname
@@ -137,11 +138,12 @@ deleteDirectory = (dir, cb) ->
       cb() if cb
   else cb() if cb
 
-transformPath = (file, {sourceDir, conventions}) ->
+transformPath = (file, from, {sourceDir, conventions}) ->
+  fixPath = withoutPath from
   result = _.reduce(conventions, (acc, {match, transform}) ->
     ext = path.extname acc
     if match acc, ext then transform acc, path else acc
-  , file)
+  , fixPath file)
   path.join sourceDir, result
 
 excludeStrategies =
@@ -159,18 +161,33 @@ isExcludedByConfig = (path, excludes) ->
   _.any excludeStrategies, ({identity, predicate}) ->
     _.any (ofType identity), (ex) -> predicate ex, path
 
-parseXml = (filePath) ->
-  contents = fs.readFileSync filePath
+parseXml = (content) ->
   result = {}
-  parseString contents, (err, output) ->
+  parseString content, (err, output) ->
     result = output
   result
+
+findBottles = (sourceDir) ->
+  linksFile = path.join sourceDir, ".links"
+  if fs.existsSync linksFile
+    encoding = "utf8"
+    data = fs.readFileSync linksFile, {encoding}
+    linksXml = parseXml data
+    bottles = linksXml?.links?.include || []
+    unless bottles and _.isArray bottles
+      log "error", ".links file not valid"
+      return
+
+    bottles
+  else
+    []
 
 buildExtensions = (config) ->
   {copy, javascript, css} = config.extensions
   extensions = _.union copy, javascript, css
 
 importAssets = (mimosaConfig, options, next) ->
+  console.log "importing assets"
   {excludePaths, sourceDir, compiledDir, isBuild, conventions} =
     mimosaConfig.fubumvc
 
@@ -180,11 +197,18 @@ importAssets = (mimosaConfig, options, next) ->
   log "debug", "allowed extensions [[ #{extensions} ]]"
   log "debug", "excludePaths [[ #{excludePaths} ]]"
 
-  fileWatcher = prepareFileWatcher cwd, extensions, excludePaths, isBuild
-  startWatching cwd, fileWatcher, {sourceDir, conventions}, next
-  #TODO: gather sources
-  #.links, will use parseXml for this
-  #
+  importFrom = (target) ->
+    fileWatcher = prepareFileWatcher target, extensions, excludePaths, isBuild
+    startWatching target, fileWatcher, {sourceDir, conventions}, next
+
+  targets = getTargets cwd
+
+  _.each targets, (target) -> importFrom target
+  return
+
+getTargets = (dir) ->
+  bottles = _.map (findBottles dir), (bottle) -> path.resolve dir, bottle
+  targets = [].concat bottles, [dir]
 
 cleanAssets = (mimosaConfig, options, next) ->
   {extensions, excludePaths, sourceDir, compiledDir, isBuild, conventions} =
@@ -192,27 +216,79 @@ cleanAssets = (mimosaConfig, options, next) ->
   extensions = buildExtensions mimosaConfig
   options = {sourceDir, conventions}
 
-  files  = findSourceFiles cwd, extensions, excludePaths
-  outputFiles = _.map files, (f) -> transformPath f, options
+  filesFor = (target) ->
+    files  = findSourceFiles target, extensions, excludePaths
+    outputFiles = _.map files, (f) -> transformPath f, target, options
+    [target, files, outputFiles]
 
+  targets = getTargets cwd
+  allTargetFiles = _.map targets, filesFor
+
+  trackCompletion = (initial, cb) ->
+    remaining = [].concat initial
+    done = (dir) ->
+      remaining = _.without remaining, dir
+      if remaining.length == 0
+        cb()
+    done
+
+  remainingTargets = [].concat targets
+
+  finish = trackCompletion targets, next
+
+  _.each allTargetFiles, ([target, files, outputFiles]) ->
+    clean [target, files, outputFiles], () -> finish(target)
+
+  return
+
+trackCompletion = (initial, cb) ->
+  remaining = [].concat initial
+  done = (dir) ->
+    remaining = _.without remaining, dir
+    if remaining.length == 0
+      cb()
+  done
+
+clean = ([target, files, outputFiles], cb) ->
   _.each outputFiles, (f) -> deleteFileSync f
 
-  dirs = _ files
-    .map (f) -> transformPath f, options
+  dirs = _ outputFiles
     .map (f) -> path.dirname f
     .sortBy "length"
     .reverse()
     .value()
 
-  remainingDirs = [].concat dirs
-  done = (dir) ->
-    remainingDirs = _.without remainingDirs, dir
-    if remainingDirs.length == 0
-      next()
+  done = trackCompletion dirs, cb
 
   _ dirs
     .map (dir) -> [dir, () -> done(dir)]
     .each ([dir, cb]) ->
       deleteDirectory dir, cb
+
+  #files  = findSourceFiles cwd, extensions, excludePaths
+  #outputFiles = _.map files, (f) -> transformPath f, cwd, options
+
+  #console.log "files: #{files}"
+  #console.log "outputFiles: #{outputFiles}"
+
+  #_.each outputFiles, (f) -> deleteFileSync f
+
+  #dirs = _ files
+  #  .map (f) -> transformPath f, cwd, options
+  #  .map (f) -> path.dirname f
+  #  .sortBy "length"
+  #  .reverse()
+  #  .value()
+
+  #remainingDirs = [].concat dirs
+  #done = (dir) ->
+  #  remainingDirs = _.without remainingDirs, dir
+  #  if remainingDirs.length == 0
+  #    next()
+
+  #_ dirs
+  #  .map (dir) -> [dir, () -> done(dir)]
+  #  .each ([dir, cb]) ->
+  #    deleteDirectory dir, cb
 
 module.exports = {importAssets, cleanAssets}

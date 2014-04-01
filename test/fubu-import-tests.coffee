@@ -6,6 +6,7 @@ path = require 'path'
 Rx = require "rx"
 fubuImport = rewirez "../lib/fubu-import.js"
 fubuImport.__set__ "log", (->)
+cwd = process.cwd()
 
 describe "fubu-import module", ->
   describe 'exports', ->
@@ -24,16 +25,37 @@ describe "fubu-import module", ->
 
 describe "parseXml", ->
   parseXml = fubuImport.__get__ "parseXml"
-  fs =
-    readFileSync: (fileName) ->
-      "<tag><numbers>one</numbers><numbers>two</numbers></tag>"
+  content =
+      """
+      <links><include>..\bottle</include><include>..\bottle2</include></links>
+      """
 
   it "can produce javascript object from xml", ->
+    output = parseXml content
+    expect(output).to.have.deep.property("links.include[0]", '..\bottle')
+    expect(output).to.have.deep.property("links.include[1]", '..\bottle2')
+
+describe "findBottles", ->
+  findBottles = fubuImport.__get__ "findBottles"
+
+  it "parses includes entries in .links file", ->
+    fs =
+      existsSync: () -> true
+      readFileSync: () -> 
+        """
+        <links><include>..\bottle</include><include>..\bottle2</include></links>
+        """
     undo = fubuImport.__tempSet__ {fs}
-    numbers = ["one","two"]
-    output = parseXml 'test.xml'
-    expect(output).to.have.deep.property("tag.numbers[0]", 'one')
-    expect(output).to.have.deep.property("tag.numbers[1]", 'two')
+    bottles = findBottles cwd
+    expect(bottles).to.eql ["..\bottle", "..\bottle2"]
+    undo()
+
+  it "returns an empty array if it can't find one", ->
+    fs =
+      existsSync: () -> false
+    undo = fubuImport.__tempSet__ {fs}
+    bottles = findBottles cwd
+    expect(bottles).to.eql []
     undo()
 
 describe "findSourceFiles", ->
@@ -108,7 +130,6 @@ describe "isExcludedByConfig", ->
 
 describe "startWatching", ->
   startWatching = fubuImport.__get__ "startWatching"
-  cwd = process.cwd()
   fullPath = (f) -> path.join cwd, f
   expected =  [
     "mimosa-config.js",
@@ -175,7 +196,7 @@ describe "transformPath", ->
   it "with no conventions, just prepends the sourceDir", ->
     conventions = []
     file =  "1.js"
-    result = transformPath file, {sourceDir, conventions}
+    result = transformPath file, cwd, {sourceDir, conventions}
     expect(result).to.equal path.join sourceDir, file
 
   it "in order, conventions transform results will be passed through each other", ->
@@ -187,7 +208,7 @@ describe "transformPath", ->
       transform: (file) -> path.join "v1", file
     conventions = [firstConvention, secondConvention]
     file = "2.js"
-    result = transformPath file, {sourceDir, conventions}
+    result = transformPath file, cwd, {sourceDir, conventions}
     expect(result).to.equal path.join sourceDir, "v1", "scripts", file
 
 describe "buildExtensions", ->
