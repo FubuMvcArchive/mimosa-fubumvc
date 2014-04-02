@@ -158,7 +158,7 @@ describe "startWatching", ->
 
     undo = fubuImport.__tempSet__ {copyFile}
     cb = () ->
-      expect(copiedFiles).to.eql expected
+      expect(copiedFiles).to.eql files
       undo()
       done()
     startWatching cwd, fileWatcher, options, cb
@@ -190,8 +190,8 @@ describe "transformPath", ->
   transformPath = fubuImport.__get__ "transformPath"
   sourceDir = "assets"
   testConvention =
-    match: (path, ext) -> true
-    transform: (path) -> path
+    match: (file, ext) -> true
+    transform: (file) -> file
 
   it "with no conventions, just prepends the sourceDir", ->
     conventions = []
@@ -225,4 +225,64 @@ describe "buildExtensions", ->
     result = buildExtensions fakeConfig
     expect(result).to.eql ['js', 'css', 'mp3', 'less']
 
+describe "trackCompletion", ->
+  trackCompletion = fubuImport.__get__ "trackCompletion"
+  it "provides a function that you can call for each item in the initial list,
+    after calling all of them it will call a final callback for you", ->
+    calledCallback = false
+    initial = [1,2,3]
+    final = -> calledCallback = true
+    finish = trackCompletion initial, final
+    _.each initial, (x) -> finish(x)
 
+    expect(calledCallback).to.equal true
+
+describe "clean", ->
+  clean = fubuImport.__get__ "clean"
+  target = cwd
+  fakeDir = "fakeDir"
+  nestedDir = path.join fakeDir, "nestedDir"
+  files = _.map ["1.coffee", "2.coffee", "3.coffee"], (f) -> path.join fakeDir, f
+  files = files.concat [path.join nestedDir, "4.coffee"]
+  outputFiles = _.map files, (f) -> f.replace "coffee", "js"
+  done = false
+  deletedFiles = []
+  deleteFileSync = (f) -> deletedFiles.push f
+  deletedDirectories = []
+  deleteDirectory = (dir, cb) ->
+    deletedDirectories.push dir
+    cb()
+
+  test = (title, expectation) ->
+    it title, ->
+      done = false
+      deletedFiles = []
+      deletedDirectories = []
+      undo = fubuImport.__tempSet__ {deleteFileSync, deleteDirectory}
+      clean [target, files, outputFiles], () -> done = true
+      expectation()
+      undo()
+
+  test "deletes all files in the outputFiles list", ->
+    expect(deletedFiles).to.eql outputFiles
+
+  test "deletes all directories in order of longest to shortest", ->
+    expect(deletedDirectories).to.eql [nestedDir, fakeDir]
+
+  test "calls the callback when its done", ->
+    expect(done).to.equal true
+
+describe "getTargets", ->
+  getTargets = fubuImport.__get__ "getTargets"
+  mainDir = "src/mainProject"
+  bottles = ["bottle1", "bottle2", "bottle3"]
+  findBottles = (sourceDir) -> _.map bottles, (f) -> "../#{f}"
+  fakePath =
+    resolve: (first, second) -> path.join mainDir, second
+
+  it "accepts a directory as a parameter and will return resolved paths to all bottles found plus the original directory itself", ->
+    undo = fubuImport.__tempSet__ {findBottles: findBottles, path: fakePath}
+    targets = getTargets mainDir
+    undo()
+    expected = _.map bottles, (f) -> path.join "src", f
+    expect(targets).to.eql expected.concat [mainDir]

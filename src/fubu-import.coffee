@@ -99,9 +99,7 @@ copyFile = (file, from, options) ->
       log "error", "Error reading file [[ #{file} ]], #{err}"
       return
 
-    console.log "file: #{file}"
     outFile = transformPath file, from, options
-    console.log "outFile: #{outFile}"
 
     dirname = path.dirname outFile
     unless fs.existsSync dirname
@@ -187,7 +185,6 @@ buildExtensions = (config) ->
   extensions = _.union copy, javascript, css
 
 importAssets = (mimosaConfig, options, next) ->
-  console.log "importing assets"
   {excludePaths, sourceDir, compiledDir, isBuild, conventions} =
     mimosaConfig.fubumvc
 
@@ -224,21 +221,10 @@ cleanAssets = (mimosaConfig, options, next) ->
   targets = getTargets cwd
   allTargetFiles = _.map targets, filesFor
 
-  trackCompletion = (initial, cb) ->
-    remaining = [].concat initial
-    done = (dir) ->
-      remaining = _.without remaining, dir
-      if remaining.length == 0
-        cb()
-    done
-
-  remainingTargets = [].concat targets
-
   finish = trackCompletion targets, next
 
   _.each allTargetFiles, ([target, files, outputFiles]) ->
     clean [target, files, outputFiles], () -> finish(target)
-
   return
 
 trackCompletion = (initial, cb) ->
@@ -254,41 +240,16 @@ clean = ([target, files, outputFiles], cb) ->
 
   dirs = _ outputFiles
     .map (f) -> path.dirname f
+    .unique()
     .sortBy "length"
     .reverse()
     .value()
 
-  done = trackCompletion dirs, cb
+  finish = trackCompletion dirs, cb
 
   _ dirs
-    .map (dir) -> [dir, () -> done(dir)]
+    .map (dir) -> [dir, () -> finish(dir)]
     .each ([dir, cb]) ->
       deleteDirectory dir, cb
-
-  #files  = findSourceFiles cwd, extensions, excludePaths
-  #outputFiles = _.map files, (f) -> transformPath f, cwd, options
-
-  #console.log "files: #{files}"
-  #console.log "outputFiles: #{outputFiles}"
-
-  #_.each outputFiles, (f) -> deleteFileSync f
-
-  #dirs = _ files
-  #  .map (f) -> transformPath f, cwd, options
-  #  .map (f) -> path.dirname f
-  #  .sortBy "length"
-  #  .reverse()
-  #  .value()
-
-  #remainingDirs = [].concat dirs
-  #done = (dir) ->
-  #  remainingDirs = _.without remainingDirs, dir
-  #  if remainingDirs.length == 0
-  #    next()
-
-  #_ dirs
-  #  .map (dir) -> [dir, () -> done(dir)]
-  #  .each ([dir, cb]) ->
-  #    deleteDirectory dir, cb
 
 module.exports = {importAssets, cleanAssets}
