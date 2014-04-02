@@ -232,7 +232,7 @@ describe "trackCompletion", ->
     calledCallback = false
     initial = [1,2,3]
     final = -> calledCallback = true
-    finish = trackCompletion initial, final
+    finish = trackCompletion "test", initial, final
     _.each initial, (x) -> finish(x)
 
     expect(calledCallback).to.equal true

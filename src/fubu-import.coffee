@@ -74,6 +74,7 @@ startWatching = (
       copyFile f, from, options
     (e) ->
       log "warn", "File watching error: #{e}"
+      log "debug", "calling callback for initial copy: #{from}"
       cb() if cb
     () ->
       ongoingCopy = fromSource(adds.merge changes)
@@ -81,6 +82,7 @@ startWatching = (
         (f) -> copyFile f, from, options
         (e) -> log "warn", "File watching error: #{e}"
       )
+      log "debug", "calling callback for initial copy: #{from}"
       cb() if cb
   )
 
@@ -194,13 +196,15 @@ importAssets = (mimosaConfig, options, next) ->
   log "debug", "allowed extensions [[ #{extensions} ]]"
   log "debug", "excludePaths [[ #{excludePaths} ]]"
 
-  importFrom = (target) ->
+  importFrom = (target, callback) ->
     fileWatcher = prepareFileWatcher target, extensions, excludePaths, isBuild
-    startWatching target, fileWatcher, {sourceDir, conventions}, next
+    startWatching target, fileWatcher, {sourceDir, conventions}, callback
 
   targets = getTargets cwd
 
-  _.each targets, (target) -> importFrom target
+  finish = trackCompletion "importAssets", targets, next
+
+  _.each targets, (target) -> importFrom target, () -> finish(target)
   return
 
 getTargets = (dir) ->
@@ -221,17 +225,18 @@ cleanAssets = (mimosaConfig, options, next) ->
   targets = getTargets cwd
   allTargetFiles = _.map targets, filesFor
 
-  finish = trackCompletion targets, next
+  finish = trackCompletion "cleanAssets", targets, next
 
   _.each allTargetFiles, ([target, files, outputFiles]) ->
     clean [target, files, outputFiles], () -> finish(target)
   return
 
-trackCompletion = (initial, cb) ->
+trackCompletion = (title, initial, cb) ->
   remaining = [].concat initial
   done = (dir) ->
     remaining = _.without remaining, dir
     if remaining.length == 0
+      log "debug", "calling callback for #{title}"
       cb()
   done
 
@@ -245,7 +250,7 @@ clean = ([target, files, outputFiles], cb) ->
     .reverse()
     .value()
 
-  finish = trackCompletion dirs, cb
+  finish = trackCompletion "clean", dirs, cb
 
   _ dirs
     .map (dir) -> [dir, () -> finish(dir)]
