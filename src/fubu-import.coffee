@@ -74,7 +74,6 @@ startWatching = (
       copyFile f, from, options
     (e) ->
       log "warn", "File watching error: #{e}"
-      log "debug", "calling callback for initial copy: #{from}"
       cb() if cb
     () ->
       ongoingCopy = fromSource(adds.merge changes)
@@ -82,7 +81,7 @@ startWatching = (
         (f) -> copyFile f, from, options
         (e) -> log "warn", "File watching error: #{e}"
       )
-      log "debug", "calling callback for initial copy: #{from}"
+      log "info", "finished initial copy for: #{from}"
       cb() if cb
   )
 
@@ -142,7 +141,7 @@ transformPath = (file, from, {sourceDir, conventions}) ->
   fixPath = withoutPath from
   result = _.reduce(conventions, (acc, {match, transform}) ->
     ext = path.extname acc
-    if match acc, ext then transform acc, path else acc
+    if match acc, ext, log then transform acc, path, log else acc
   , fixPath file)
   path.join sourceDir, result
 
@@ -187,12 +186,12 @@ buildExtensions = (config) ->
   extensions = _.union copy, javascript, css
 
 importAssets = (mimosaConfig, options, next) ->
+  log "info", "importing assets"
   {excludePaths, sourceDir, compiledDir, isBuild, conventions} =
     mimosaConfig.fubumvc
 
   extensions = buildExtensions mimosaConfig
 
-  log "debug", "importing assets"
   log "debug", "allowed extensions [[ #{extensions} ]]"
   log "debug", "excludePaths [[ #{excludePaths} ]]"
 
@@ -204,7 +203,8 @@ importAssets = (mimosaConfig, options, next) ->
 
   finish = trackCompletion "importAssets", targets, next
 
-  _.each targets, (target) -> importFrom target, () -> finish(target)
+  _.each targets, (target) ->
+    importFrom target, () -> finish(target)
   return
 
 getTargets = (dir) ->
@@ -212,17 +212,20 @@ getTargets = (dir) ->
   targets = [].concat bottles, [dir]
 
 cleanAssets = (mimosaConfig, options, next) ->
+  log "info", "cleaning assets"
   {extensions, excludePaths, sourceDir, compiledDir, isBuild, conventions} =
     mimosaConfig.fubumvc
   extensions = buildExtensions mimosaConfig
   options = {sourceDir, conventions}
 
   filesFor = (target) ->
+    log "debug", "finding files for: #{target} with extensions: #{extensions} and excludePaths: #{excludePaths}"
     files  = findSourceFiles target, extensions, excludePaths
     outputFiles = _.map files, (f) -> transformPath f, target, options
     [target, files, outputFiles]
 
   targets = getTargets cwd
+
   allTargetFiles = _.map targets, filesFor
 
   finish = trackCompletion "cleanAssets", targets, next
@@ -236,7 +239,7 @@ trackCompletion = (title, initial, cb) ->
   done = (dir) ->
     remaining = _.without remaining, dir
     if remaining.length == 0
-      log "debug", "calling callback for #{title}"
+      log "info", "finished #{title}"
       cb()
   done
 
@@ -250,11 +253,14 @@ clean = ([target, files, outputFiles], cb) ->
     .reverse()
     .value()
 
-  finish = trackCompletion "clean", dirs, cb
+  if dirs.length > 0
+    finish = trackCompletion "clean", dirs, cb
 
-  _ dirs
-    .map (dir) -> [dir, () -> finish(dir)]
-    .each ([dir, cb]) ->
-      deleteDirectory dir, cb
+    _ dirs
+      .map (dir) -> [dir, () -> finish(dir)]
+      .each ([dir, cb]) ->
+        deleteDirectory dir, cb
+  else
+    cb()
 
 module.exports = {importAssets, cleanAssets}

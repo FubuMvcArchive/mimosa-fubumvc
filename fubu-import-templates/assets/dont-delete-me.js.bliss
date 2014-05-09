@@ -1,0 +1,4 @@
+@!()
+//mimosa wont build if there is not at least one file in assets before it starts
+//and since we copy things over to assets as a first step, with nothing in the folder
+//it will quit before it can do the copy

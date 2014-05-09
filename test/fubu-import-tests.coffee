@@ -272,6 +272,11 @@ describe "clean", ->
   test "calls the callback when its done", ->
     expect(done).to.equal true
 
+  it "immediately calls the callback if there are no files to delete", ->
+    done = false
+    clean [target, [], []], () -> done = true
+    expect(done).to.equal true
+
 describe "getTargets", ->
   getTargets = fubuImport.__get__ "getTargets"
   mainDir = "src/mainProject"

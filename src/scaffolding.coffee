@@ -15,6 +15,10 @@ setupFileSystem = (args) ->
   makeFolders()
   initFiles(args)
 
+resetFileSystem = (args) ->
+  deleteFolders()
+  setupFileSystem args
+
 makeFolders = ->
   folders = ['assets/scripts', 'assets/styles', 'public']
   _.each folders, (dir) ->
@@ -22,10 +26,17 @@ makeFolders = ->
       log "info", "creating #{dir}"
       wrench.mkdirSyncRecursive dir, 0o0777
 
+deleteFolders = ->
+  folders = ['assets', 'public']
+  _.each folders, (dir) ->
+    if fs.existsSync dir
+      log "info", "deleting #{dir}"
+      wrench.rmdirSyncRecursive dir
+
 initFiles = (flags = false) ->
   useCoffee = flags == "coffee"
   ext = if useCoffee then "coffee" else "js"
-  files = ["bower.json", "mimosa-config.#{ext}"]
+  files = ["bower.json", "mimosa-config.#{ext}", "assets/dont-delete-me.js"]
   viewModel =
     name: path.basename cwd
   contents = _ files
@@ -46,4 +57,4 @@ copyContents = ([fileName, contents]) ->
     log "info", "creating #{fileName}"
     fs.writeFileSync fileName, contents
 
-module.exports = {setupFileSystem}
+module.exports = {setupFileSystem, resetFileSystem}

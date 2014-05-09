@@ -21,10 +21,10 @@ describe "initFiles", ->
     undo()
 
   it "writes files", ->
-    writesFiles ["bower.json", "mimosa-config.js"]
+    writesFiles ["bower.json", "mimosa-config.js", "assets/dont-delete-me.js"]
 
   it "uses .coffee extension for files when coffee flag is passed", ->
-    writesFiles ["bower.json", "mimosa-config.coffee"], "coffee"
+    writesFiles ["bower.json", "mimosa-config.coffee", "assets/dont-delete-me.js"], "coffee"
 
   it "only writes files if they don't exist already", ->
     fs =
