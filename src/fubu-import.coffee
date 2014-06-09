@@ -1,6 +1,6 @@
 "use strict"
 
-{log} = require './util'
+{log, printObj} = require './util'
 color = require('ansi-color').set
 fs = require 'fs'
 path = require 'path'
@@ -32,24 +32,25 @@ shouldInclude = (f, isFile, extensions, excludes) ->
 withoutPath = (fromPath) ->
   (input) -> input.replace "#{fromPath}#{path.sep}", ''
 
-prepareFileWatcher = (from, extensions, excludes, isBuild) ->
+prepareFileWatcher = (from, extensions, excludes, isBuild, fileWatcherSettings) ->
   #TODO: no more sync calls
   files  = findSourceFiles from, extensions, excludes
   numberOfFiles  = files.length
   fixPath = withoutPath from
 
-  watchSettings =
+  settings =
     ignored: (file) ->
       isFile = fs.statSync(file).isFile()
       f = fixPath file
       not (shouldInclude f, isFile, extensions, excludes)
     persistent: not isBuild
-    usePolling: true
-    interval: 500
-    binaryInterval: 1000
+
+  watchSettings = _.extend settings, fileWatcherSettings
 
   observableFor = (event) ->
     Rx.Observable.fromEvent watcher, event
+
+  log "debug", "starting file watcher on [[ #{from} ]] usePolling: #{watchSettings.usePolling}"
 
   watcher = watch.watch from, watchSettings
   adds = observableFor "add"
@@ -187,7 +188,7 @@ buildExtensions = (config) ->
 
 importAssets = (mimosaConfig, options, next) ->
   log "info", "importing assets"
-  {excludePaths, sourceDir, compiledDir, isBuild, conventions} =
+  {excludePaths, sourceDir, compiledDir, isBuild, conventions, usePolling, interval, binaryInterval} =
     mimosaConfig.fubumvc
 
   extensions = buildExtensions mimosaConfig
@@ -195,8 +196,10 @@ importAssets = (mimosaConfig, options, next) ->
   log "debug", "allowed extensions [[ #{extensions} ]]"
   log "debug", "excludePaths [[ #{excludePaths} ]]"
 
+  fileWatcherSettings = {usePolling, interval, binaryInterval}
+
   importFrom = (target, callback) ->
-    fileWatcher = prepareFileWatcher target, extensions, excludePaths, isBuild
+    fileWatcher = prepareFileWatcher target, extensions, excludePaths, isBuild, fileWatcherSettings
     startWatching target, fileWatcher, {sourceDir, conventions}, callback
 
   targets = getTargets cwd

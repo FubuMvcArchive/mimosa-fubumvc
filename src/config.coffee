@@ -5,6 +5,9 @@ path = require 'path'
 
 exports.defaults = ->
   fubumvc:
+    usePolling: true
+    interval: 500
+    binaryInterval: 1000
     excludePaths: ["bin", "obj", /^\./]
     conventions: []
 
@@ -13,13 +16,16 @@ exports.placeholder = ->
   \t
 
   # fubumvc:
+    # usePolling: true
+    # interval: 500
+    # binaryInterval: 1000
     # excludePaths: ["bin", "obj", /^\./]
     # conventions: [
       # provide 0 or more conventions
       # { 
-        # match: (file, ext) ->
+        # match: (file, ext, log) ->
           # true #filename and extension, return true/false,
-        # transform: (file, path) ->
+        # transform: (file, path, log) ->
           # file #filename and path module to do path.join, etc
       # }
     # ]
@@ -32,7 +38,19 @@ exports.validate = (config, validators) ->
     errors.push "fubumvc config"
     return errors
 
-  {excludePaths, conventions} = fubumvc
+  {excludePaths, conventions, usePolling, interval, binaryInterval} = fubumvc
+
+  unless usePolling? and _.isBoolean usePolling
+    errors.push "fubumvc.usePolling"
+    return errors
+
+  unless interval? and _.isNumber interval
+    errors.push "fubumvc.interval"
+    return errors
+
+  unless binaryInterval? and _.isNumber binaryInterval
+    errors.push "fubumvc.binaryInterval"
+    return errors
 
   unless excludePaths? and _.isArray excludePaths
     errors.push "fubumvc.excludePaths"
