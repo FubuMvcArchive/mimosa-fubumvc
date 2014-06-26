@@ -4,6 +4,7 @@ expect = chai.expect
 config = require("../lib/config.js")
 
 describe "the config", ->
+  path = require 'path'
   defaults =
     usePolling: true
     interval: 500
@@ -19,6 +20,13 @@ describe "the config", ->
       fubumvc: "wtf"
     result = config.validate fakeConfig
     expect(result).to.eql ["fubumvc config"]
+
+  it "errors if the baseDir exists and is not a real directory", ->
+    path.exists = -> false
+    fakeConfig =
+      fubumvc: {baseDir: "non-existent/path"}
+    result = config.validate fakeConfig
+    expect(result).to.eql ["fubumvc.baseDir"]
 
   it "errors without usePolling property", ->
     fakeConfig =
