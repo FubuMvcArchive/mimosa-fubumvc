@@ -225,6 +225,23 @@ describe "buildExtensions", ->
     result = buildExtensions fakeConfig
     expect(result).to.eql ['js', 'css', 'mp3', 'less']
 
+describe "workingDir and setWorkingDir", ->
+  workingDir = fubuImport.__get__ "workingDir"
+  setWorkingDir = fubuImport.__get__ "setWorkingDir"
+  it "uses the cwd for the working dir by default", ->
+    expect(workingDir).to.eql cwd
+
+  it "sets the workingDir to cwd if given a falsy value", ->
+    setWorkingDir null
+    workingDir = fubuImport.__get__ "workingDir"
+    expect(workingDir).to.eql cwd
+
+  it "sets the workingDir to a path if given", ->
+    pathName = "some/path/"
+    setWorkingDir pathName
+    workingDir = fubuImport.__get__ "workingDir"
+    expect(workingDir).to.eql pathName
+
 describe "trackCompletion", ->
   trackCompletion = fubuImport.__get__ "trackCompletion"
   it "provides a function that you can call for each item in the initial list,

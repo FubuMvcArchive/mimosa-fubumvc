@@ -8,7 +8,7 @@ watch = require 'chokidar'
 wrench = require 'wrench'
 _ = require 'lodash'
 parseString = require('xml2js').parseString
-cwd = process.cwd()
+workingDir = process.cwd()
 Rx = require "rx"
 
 findSourceFiles = (from, extensions, excludes) ->
@@ -186,12 +186,16 @@ buildExtensions = (config) ->
   {copy, javascript, css} = config.extensions
   extensions = _.union copy, javascript, css
 
+setWorkingDir = (val) ->
+  workingDir = val or process.cwd()
+
 importAssets = (mimosaConfig, options, next) ->
   log "info", "importing assets"
-  {excludePaths, sourceDir, compiledDir, isBuild, conventions, usePolling, interval, binaryInterval} =
+  {excludePaths, sourceDir, compiledDir, isBuild, conventions, usePolling, interval, binaryInterval, baseDir} =
     mimosaConfig.fubumvc
 
   extensions = buildExtensions mimosaConfig
+  setWorkingDir baseDir
 
   log "debug", "allowed extensions [[ #{extensions} ]]"
   log "debug", "excludePaths [[ #{excludePaths} ]]"
@@ -202,7 +206,7 @@ importAssets = (mimosaConfig, options, next) ->
     fileWatcher = prepareFileWatcher target, extensions, excludePaths, isBuild, fileWatcherSettings
     startWatching target, fileWatcher, {sourceDir, conventions}, callback
 
-  targets = getTargets cwd
+  targets = getTargets workingDir
 
   finish = trackCompletion "importAssets", targets, next
 
@@ -227,7 +231,7 @@ cleanAssets = (mimosaConfig, options, next) ->
     outputFiles = _.map files, (f) -> transformPath f, target, options
     [target, files, outputFiles]
 
-  targets = getTargets cwd
+  targets = getTargets workingDir
 
   allTargetFiles = _.map targets, filesFor
 
