@@ -32,13 +32,24 @@ makeFolders = (baseDir = "")->
       log "info", "creating #{target}"
       wrench.mkdirSyncRecursive target, 0o0777
 
+removeAllFilesFromDirectory = (folder, keep) ->
+  fs.readdirSync(folder).forEach (file) ->
+    targetFile = path.join(folder, file)
+    isDir = fs.lstatSync(targetFile).isDirectory()
+    if file is keep
+      if isDir then removeAllFilesFromDirectory targetFile
+      return
+    try
+      if isDir then wrench.rmdirSyncRecursive(targetFile) else fs.unlinkSync(targetFile)
+      log "success", "deleted #{targetFile}"
+    catch err
+      log("error", err)
+
 deleteFolders = (baseDir = "")->
   folders = ['assets', 'public']
   _.each folders, (dir) ->
     target = path.join(baseDir, dir)
-    if fs.existsSync target
-      log "info", "deleting #{target}"
-      wrench.rmdirSyncRecursive target
+    removeAllFilesFromDirectory target, "scripts"
 
 filesAtBase = (baseDir, files) ->
   _.map files, (f)-> path.join(baseDir, f)

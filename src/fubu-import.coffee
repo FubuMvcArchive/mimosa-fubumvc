@@ -163,8 +163,6 @@ isExcludedByConfig = (path, excludes) ->
 
 parseXml = (content) ->
   result = {}
-  content = content.replace(/\\/g, "\&#92;")
-  console.log(content)
   parseString content, (err, output) ->
     result = output
   result
