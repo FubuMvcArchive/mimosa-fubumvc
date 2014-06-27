@@ -41,13 +41,13 @@ describe "findBottles", ->
   it "parses includes entries in .links file", ->
     fs =
       existsSync: () -> true
-      readFileSync: () -> 
+      readFileSync: () ->
         """
-        <links><include>..\bottle</include><include>..\bottle2</include></links>
+        <links><include>../bottle</include><include>../bottle2</include></links>
         """
     undo = fubuImport.__tempSet__ {fs}
     bottles = findBottles cwd
-    expect(bottles).to.eql ["..\bottle", "..\bottle2"]
+    expect(bottles).to.eql ["..#{path.sep}bottle", "..#{path.sep}bottle2"]
     undo()
 
   it "returns an empty array if it can't find one", ->

@@ -22,7 +22,7 @@ describe "the config", ->
     expect(result).to.eql ["fubumvc config"]
 
   it "errors if the baseDir exists and is not a real directory", ->
-    path.exists = -> false
+    path.existsSync = -> false
     fakeConfig =
       fubumvc: {baseDir: "non-existent/path"}
     result = config.validate fakeConfig

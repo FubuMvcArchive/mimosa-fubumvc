@@ -163,6 +163,8 @@ isExcludedByConfig = (path, excludes) ->
 
 parseXml = (content) ->
   result = {}
+  content = content.replace(/\\/g, "\&#92;")
+  console.log(content)
   parseString content, (err, output) ->
     result = output
   result
@@ -177,7 +179,7 @@ findBottles = (sourceDir) ->
     unless bottles and _.isArray bottles
       log "error", ".links file not valid"
       return
-
+    bottles = _.map(bottles, (bottle)-> bottle.replace(/\\|\//, path.sep))
     bottles
   else
     []
