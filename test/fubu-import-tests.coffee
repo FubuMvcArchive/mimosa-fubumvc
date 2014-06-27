@@ -41,13 +41,13 @@ describe "findBottles", ->
   it "parses includes entries in .links file", ->
     fs =
       existsSync: () -> true
-      readFileSync: () -> 
+      readFileSync: () ->
         """
-        <links><include>..\bottle</include><include>..\bottle2</include></links>
+        <links><include>../bottle</include><include>../bottle2</include></links>
         """
     undo = fubuImport.__tempSet__ {fs}
     bottles = findBottles cwd
-    expect(bottles).to.eql ["..\bottle", "..\bottle2"]
+    expect(bottles).to.eql ["..#{path.sep}bottle", "..#{path.sep}bottle2"]
     undo()
 
   it "returns an empty array if it can't find one", ->
@@ -224,6 +224,23 @@ describe "buildExtensions", ->
       extensions: {copy, js, css}
     result = buildExtensions fakeConfig
     expect(result).to.eql ['js', 'css', 'mp3', 'less']
+
+describe "workingDir and setWorkingDir", ->
+  workingDir = fubuImport.__get__ "workingDir"
+  setWorkingDir = fubuImport.__get__ "setWorkingDir"
+  it "uses the cwd for the working dir by default", ->
+    expect(workingDir).to.eql cwd
+
+  it "sets the workingDir to cwd if given a falsy value", ->
+    setWorkingDir null
+    workingDir = fubuImport.__get__ "workingDir"
+    expect(workingDir).to.eql cwd
+
+  it "sets the workingDir to a path if given", ->
+    pathName = "some/path/"
+    setWorkingDir pathName
+    workingDir = fubuImport.__get__ "workingDir"
+    expect(workingDir).to.eql pathName
 
 describe "trackCompletion", ->
   trackCompletion = fubuImport.__get__ "trackCompletion"

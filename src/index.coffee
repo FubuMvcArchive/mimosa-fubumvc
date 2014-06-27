@@ -13,12 +13,12 @@ registerCommand = (program, retrieveConfig) ->
     .command('fubu:init')
     .description("bower.json and mimosa-config, 'coffee' flag for coffee")
     .action (args) ->
-      scaffolding.setupFileSystem args
+      scaffolding.setupFileSystem args, retrieveConfig
   program
     .command('fubu:reset')
     .description("rm -rf on assets and public then runs fubu:init")
     .action (args) ->
-      scaffolding.resetFileSystem args
+      scaffolding.resetFileSystem args, retrieveConfig
 
 module.exports =
   registration:    registration
