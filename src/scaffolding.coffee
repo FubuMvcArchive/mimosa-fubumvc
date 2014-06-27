@@ -12,13 +12,14 @@ bliss = new Bliss
 cwd = process.cwd()
 
 setupFileSystem = (args, retrieveConfig) ->
-  retrieveConfig(true, (config) ->
-    makeFolders(config.fubumvc.baseDir)
-    initFiles(args)
+  retrieveConfig(false, (config) ->
+    baseDir = config.fubumvc.baseDir
+    makeFolders(baseDir)
+    initFiles(args, baseDir)
   )
 
 resetFileSystem = (args, retrieveConfig) ->
-  retrieveConfig(true, (config) ->
+  retrieveConfig(false, (config) ->
     deleteFolders(config.fubumvc.baseDir)
     setupFileSystem args, retrieveConfig
   )
@@ -34,7 +35,7 @@ makeFolders = (baseDir = "")->
 deleteFolders = (baseDir = "")->
   folders = ['assets', 'public']
   _.each folders, (dir) ->
-    target = paht.join(baseDir, dir)
+    target = path.join(baseDir, dir)
     if fs.existsSync target
       log "info", "deleting #{target}"
       wrench.rmdirSyncRecursive target

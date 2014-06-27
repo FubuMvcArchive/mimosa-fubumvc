@@ -205,6 +205,7 @@ importAssets = (mimosaConfig, options, next) ->
   fileWatcherSettings = {usePolling, interval, binaryInterval}
 
   importFrom = (target, callback) ->
+    log "info", "watching #{target}"
     fileWatcher = prepareFileWatcher target, extensions, excludePaths, isBuild, fileWatcherSettings
     startWatching target, fileWatcher, {sourceDir, conventions}, callback
 
