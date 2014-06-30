@@ -38,7 +38,11 @@ exports.validate = (config, validators) ->
     errors.push "fubumvc config"
     return errors
 
-  {excludePaths, conventions, usePolling, interval, binaryInterval} = fubumvc
+  {excludePaths, conventions, usePolling, interval, binaryInterval, baseDir} = fubumvc
+
+  unless !baseDir? or (baseDir? and path.existsSync baseDir)
+    errors.push "fubumvc.baseDir"
+    return errors
 
   unless usePolling? and _.isBoolean usePolling
     errors.push "fubumvc.usePolling"
