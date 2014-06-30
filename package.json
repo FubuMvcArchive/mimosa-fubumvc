@@ -1,6 +1,6 @@
 {
   "name": "mimosa-fubumvc",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "homepage": "http://fubuworld.com",
   "author": "FubuMVC",
   "description": "FubuMVC asset pipeline conventions for Mimosa",
@@ -8,6 +8,11 @@
     {
       "name": "FubuMVC",
       "email": "fubumvc-devel@googlegroups.com"
+    },
+    {
+      "name": "Matt Smith",
+      "email": "mtscout6@gmail.com",
+      "url": "http://softwarebymatt.com"
     }
   ],
   "repository": {
