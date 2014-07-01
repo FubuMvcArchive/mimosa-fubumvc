@@ -148,7 +148,6 @@ withoutBaseDir = (testPath, baseDir) ->
   return returnVal
 
 transformPath = (file, from, {sourceDir, conventions, baseDir}) ->
-  baseDir = baseDir or ""
   newFilePath = withoutBaseDir file, baseDir
   newSourceDir = withoutBaseDir sourceDir, baseDir
   fixPath = withoutPath from
@@ -157,13 +156,12 @@ transformPath = (file, from, {sourceDir, conventions, baseDir}) ->
     ext = path.extname acc
     if match acc, ext, log then transform acc, path, log else acc
   , newFile)
-  sourceRegex = new RegExp(newSourceDir, "g")
-  result = result.replace(sourceRegex, "")
-  finalPath = path.join baseDir, newSourceDir, result
+  result = result.replace(newSourceDir, "")
+  finalPath = path.join baseDir or "", newSourceDir, result
   finalPath
 
 matchesWithoutBaseDir = (testPath, baseDir, predicate) ->
-  newTest = withoutBaseDir testPath, baseDir or ""
+  newTest = withoutBaseDir testPath, baseDir
   shouldExclude = predicate(newTest)
   return shouldExclude
 
