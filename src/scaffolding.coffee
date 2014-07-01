@@ -13,10 +13,13 @@ cwd = process.cwd()
 
 setupFileSystem = (args, retrieveConfig) ->
   retrieveConfig(false, (config) ->
-    baseDir = if config.fubumvc then config.fubumvc.baseDir else cwd
-    makeFolders(baseDir)
-    initFiles(args, baseDir)
+    setupFileSystemWithConfig config, args
   )
+
+setupFileSystemWithConfig = (config, args) ->
+  baseDir = if config.fubumvc then config.fubumvc.baseDir else cwd
+  makeFolders(baseDir)
+  initFiles(args, baseDir)
 
 resetFileSystem = (args, retrieveConfig) ->
   retrieveConfig(false, (config) ->
@@ -82,4 +85,4 @@ copyContents = ([fileName, contents]) ->
     log "info", "creating #{fileName}"
     fs.writeFileSync fileName, contents
 
-module.exports = {setupFileSystem, resetFileSystem}
+module.exports = {setupFileSystem, resetFileSystem, setupFileSystemWithConfig}

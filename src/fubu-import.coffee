@@ -244,11 +244,12 @@ cleanAssets = (mimosaConfig, options, next) ->
     mimosaConfig.fubumvc
   extensions = buildExtensions mimosaConfig
   options = {sourceDir, conventions, baseDir}
+  setWorkingDir baseDir
 
   filesFor = (target) ->
     log "debug", "finding files for: #{target} with extensions: #{extensions} and excludePaths: #{excludePaths}"
-    files  = findSourceFiles target, extensions, excludePaths
-    outputFiles = _.map files, (f) -> transformPath f, target, options, mimosaConfig
+    files  = findSourceFiles target, extensions, excludePaths, baseDir
+    outputFiles = _.map files, (f) -> transformPath f, target, options
     [target, files, outputFiles]
 
   targets = getTargets workingDir
