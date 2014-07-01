@@ -11,30 +11,30 @@ parseString = require('xml2js').parseString
 workingDir = process.cwd()
 Rx = require "rx"
 
-findSourceFiles = (from, extensions, excludes) ->
+findSourceFiles = (from, extensions, excludes, baseDir) ->
   wrench.readdirSyncRecursive(from)
     .filter (f) ->
       originalFile = path.join from, f
       isFile = fs.statSync(originalFile).isFile()
-      isIncluded = shouldInclude f, isFile, extensions, excludes
+      isIncluded = shouldInclude f, isFile, extensions, excludes, baseDir
       isIncluded and isFile
     .map (f) -> path.join from, f
 
-shouldInclude = (f, isFile, extensions, excludes) ->
+shouldInclude = (f, isFile, extensions, excludes, baseDir) ->
   #TODO: only adds the . to you for extensions if its left off
   extensions = extensions.map (ext) -> ".#{ext}"
   ext = path.extname f
   matchesExtension = not isFile or _.contains extensions, ext
   atRoot = isFile and f.indexOf(path.sep) == -1
-  excluded = isExcludedByConfig f, excludes
+  excluded = isExcludedByConfig f, excludes, baseDir
   matchesExtension and not excluded and not atRoot
 
 withoutPath = (fromPath) ->
   (input) -> input.replace "#{fromPath}#{path.sep}", ''
 
-prepareFileWatcher = (from, extensions, excludes, isBuild, fileWatcherSettings) ->
+prepareFileWatcher = (from, extensions, excludes, isBuild, fileWatcherSettings, baseDir) ->
   #TODO: no more sync calls
-  files  = findSourceFiles from, extensions, excludes
+  files  = findSourceFiles from, extensions, excludes, baseDir
   numberOfFiles  = files.length
   fixPath = withoutPath from
 
@@ -42,7 +42,7 @@ prepareFileWatcher = (from, extensions, excludes, isBuild, fileWatcherSettings) 
     ignored: (file) ->
       isFile = fs.statSync(file).isFile()
       f = fixPath file
-      not (shouldInclude f, isFile, extensions, excludes)
+      not (shouldInclude f, isFile, extensions, excludes, baseDir)
     persistent: not isBuild
 
   watchSettings = _.extend settings, fileWatcherSettings
@@ -111,7 +111,7 @@ copyFile = (file, from, options) ->
       if err
         log "error", "Error reading file [[ #{file} ]], #{err}"
       else
-        log "success", "File copied to destination [[ #{outFile} ]]."
+        log "success", "File copied to destination [[ #{outFile} ]] from [[ #{file} ]]"
 
 deleteFileSync = (file) ->
   if fs.existsSync file
@@ -138,28 +138,47 @@ deleteDirectory = (dir, cb) ->
       cb() if cb
   else cb() if cb
 
-transformPath = (file, from, {sourceDir, conventions}) ->
+withoutBaseDir = (testPath, baseDir) ->
+  baseDir = if (baseDir and baseDir.length) then path.join(baseDir, "/") else baseDir
+  cwd = process.cwd()
+  newPath = testPath.replace(cwd, "")
+  start = Math.max(newPath.indexOf(baseDir), 0)
+  newPath = newPath.substring(start)
+  returnVal = newPath.replace(baseDir or "", "").replace(/^\/|^\\/, "")
+  return returnVal
+
+transformPath = (file, from, {sourceDir, conventions, baseDir}) ->
+  newFilePath = withoutBaseDir file, baseDir
+  newSourceDir = withoutBaseDir sourceDir, baseDir
   fixPath = withoutPath from
+  newFile = fixPath newFilePath
   result = _.reduce(conventions, (acc, {match, transform}) ->
     ext = path.extname acc
     if match acc, ext, log then transform acc, path, log else acc
-  , fixPath file)
-  path.join sourceDir, result
+  , newFile)
+  result = result.replace(newSourceDir, "")
+  finalPath = path.join baseDir or "", newSourceDir, result
+  finalPath
+
+matchesWithoutBaseDir = (testPath, baseDir, predicate) ->
+  newTest = withoutBaseDir testPath, baseDir
+  shouldExclude = predicate(newTest)
+  return shouldExclude
 
 excludeStrategies =
   string:
     identity: _.isString
-    predicate: (ex, path) -> path.indexOf(ex) == 0
+    predicate: (ex, testPath, baseDir) ->  matchesWithoutBaseDir testPath, baseDir, (newPath) -> newPath.indexOf(ex) == 0
   regex:
     identity: _.isRegExp
-    predicate: (ex, path) -> ex.test path
+    predicate: (ex, testPath, baseDir) -> matchesWithoutBaseDir testPath, baseDir, (newPath) -> ex.test newPath
 
-isExcludedByConfig = (path, excludes) ->
+isExcludedByConfig = (testPath, excludes, baseDir) ->
   ofType = (method) ->
     excludes.filter (f) -> method(f)
 
   _.any excludeStrategies, ({identity, predicate}) ->
-    _.any (ofType identity), (ex) -> predicate ex, path
+    _.any (ofType identity), (ex) -> predicate ex, testPath, baseDir
 
 parseXml = (content) ->
   result = {}
@@ -204,8 +223,8 @@ importAssets = (mimosaConfig, options, next) ->
 
   importFrom = (target, callback) ->
     log "info", "watching #{target}"
-    fileWatcher = prepareFileWatcher target, extensions, excludePaths, isBuild, fileWatcherSettings
-    startWatching target, fileWatcher, {sourceDir, conventions}, callback
+    fileWatcher = prepareFileWatcher target, extensions, excludePaths, isBuild, fileWatcherSettings, mimosaConfig.fubumvc.baseDir
+    startWatching target, fileWatcher, {sourceDir, conventions, baseDir}, callback
 
   targets = getTargets workingDir
 
@@ -221,15 +240,15 @@ getTargets = (dir) ->
 
 cleanAssets = (mimosaConfig, options, next) ->
   log "info", "cleaning assets"
-  {extensions, excludePaths, sourceDir, compiledDir, isBuild, conventions} =
+  {extensions, excludePaths, sourceDir, compiledDir, isBuild, conventions, baseDir} =
     mimosaConfig.fubumvc
   extensions = buildExtensions mimosaConfig
-  options = {sourceDir, conventions}
+  options = {sourceDir, conventions, baseDir}
 
   filesFor = (target) ->
     log "debug", "finding files for: #{target} with extensions: #{extensions} and excludePaths: #{excludePaths}"
     files  = findSourceFiles target, extensions, excludePaths
-    outputFiles = _.map files, (f) -> transformPath f, target, options
+    outputFiles = _.map files, (f) -> transformPath f, target, options, mimosaConfig
     [target, files, outputFiles]
 
   targets = getTargets workingDir
