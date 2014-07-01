@@ -160,7 +160,6 @@ transformPath = (file, from, {sourceDir, conventions, baseDir}) ->
   sourceRegex = new RegExp(newSourceDir, "g")
   result = result.replace(sourceRegex, "")
   finalPath = path.join baseDir, newSourceDir, result
-  log("info", "moving to [[ #{finalPath} ]] using [[ #{baseDir}, #{newSourceDir}, #{result} ]]")
   finalPath
 
 matchesWithoutBaseDir = (testPath, baseDir, predicate) ->
