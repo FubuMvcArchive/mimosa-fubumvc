@@ -61,9 +61,9 @@ and they will still get picked up.
 [npm-image]: http://img.shields.io/npm/v/mimosa-fubumvc.svg
 
 [travis-url]: https://travis-ci.org/DarthFubuMVC/mimosa-fubumvc
-[travis-image]: https://travis-ci.org/DarthFubuMVC/mimosa-fubumvc.svg
+[travis-image]: https://travis-ci.org/DarthFubuMVC/mimosa-fubumvc.svg?branch=master
 
 [coveralls-url]: https://coveralls.io/r/DarthFubuMVC/mimosa-fubumvc
-[coveralls-image]: https://img.shields.io/coveralls/DarthFubuMVC/mimosa-fubumvc.svg
+[coveralls-image]: https://img.shields.io/coveralls/DarthFubuMVC/mimosa-fubumvc.svg?branch=master
 
 [dependencies-image]: https://david-dm.org/DarthFubuMVC/mimosa-fubumvc.png
