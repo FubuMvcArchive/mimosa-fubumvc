@@ -82,6 +82,19 @@ describe "findSourceFiles", ->
     expect(result).to.eql []
     undo()
 
+  it "ignores anything at the baseDir root", ->
+    expected = [
+      "1.js",
+      "bower.json",
+      "mimosa.config.js",
+      "mimosa.config.coffee",
+    ]
+    files = -> expected
+    undo = fubuImport.__tempSet__ {fs, wrench}
+    result = findSourceFiles ".", ["base/dir/js", "base/dir/json", "base/dir/coffee"], [], "base/dir" #empty excludes, baseDir is base/dir
+    expect(result).to.eql []
+    undo()
+
   it "finds only the files that match extensions", ->
     expected = [
       (path.join "one", "2.js"),
@@ -198,6 +211,14 @@ describe "transformPath", ->
     file =  "1.js"
     result = transformPath file, cwd, {sourceDir, conventions}
     expect(result).to.equal path.join sourceDir, file
+
+  it "prepends the baseDir to the sourceDir when given", ->
+    conventions = []
+    baseDir = "base/dir"
+    file =  "base/dir/1.js"
+    finishedFile = "1.js"
+    result = transformPath file, cwd, {sourceDir, conventions, baseDir}
+    expect(result).to.equal path.join baseDir, sourceDir, finishedFile
 
   it "in order, conventions transform results will be passed through each other", ->
     firstConvention =

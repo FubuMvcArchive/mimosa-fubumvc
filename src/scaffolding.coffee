@@ -13,14 +13,15 @@ cwd = process.cwd()
 
 setupFileSystem = (args, retrieveConfig) ->
   retrieveConfig(false, (config) ->
-    baseDir = config.fubumvc.baseDir
+    baseDir = if config.fubumvc then config.fubumvc.baseDir else cwd
     makeFolders(baseDir)
     initFiles(args, baseDir)
   )
 
 resetFileSystem = (args, retrieveConfig) ->
   retrieveConfig(false, (config) ->
-    deleteFolders(config.fubumvc.baseDir)
+    baseDir = if config.fubumvc then config.fubumvc.baseDir else cwd
+    deleteFolders(baseDir)
     setupFileSystem args, retrieveConfig
   )
 
@@ -40,8 +41,11 @@ removeAllFilesFromDirectory = (folder, keep) ->
       if isDir then removeAllFilesFromDirectory targetFile
       return
     try
-      if isDir then wrench.rmdirSyncRecursive(targetFile) else fs.unlinkSync(targetFile)
-      log "success", "deleted #{targetFile}"
+      if isDir then wrench.rmdirSyncRecursive(targetFile) else
+        if (/\.gitignore/.test targetFile)
+          return
+        fs.unlinkSync(targetFile)
+        log "success", "deleted #{targetFile}"
     catch err
       log("error", err)
 
