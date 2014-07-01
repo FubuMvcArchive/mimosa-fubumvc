@@ -1,4 +1,4 @@
-mimosa-fubumvc
+mimosa-fubumvc [![NPM version][npm-image]][npm-url] [![Build Status][travis-image]][travis-url] [![Coveralls Status][coveralls-image]][coveralls-url] ![Dependencies][dependencies-image]
 ===========
 ## Overview
 
@@ -56,3 +56,14 @@ and they will still get picked up.
 
   fubumvc:
     excludePaths: ["bin", "obj", /^\./]
+
+[npm-url]: https://npmjs.org/package/mimosa-fubumvc
+[npm-image]: http://img.shields.io/npm/v/mimosa-fubumvc.svg
+
+[travis-url]: https://travis-ci.org/DarthFubuMVC/mimosa-fubumvc
+[travis-image]: https://travis-ci.org/DarthFubuMVC/mimosa-fubumvc.svg
+
+[coveralls-url]: https://coveralls.io/r/DarthFubuMVC/mimosa-fubumvc
+[coveralls-image]: https://img.shields.io/coveralls/DarthFubuMVC/mimosa-fubumvc.svg
+
+[dependencies-image]: https://david-dm.org/DarthFubuMVC/mimosa-fubumvc.png
