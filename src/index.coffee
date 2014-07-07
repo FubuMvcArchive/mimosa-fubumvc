@@ -5,7 +5,10 @@ fubuImport = require './fubu-import'
 scaffolding = require './scaffolding'
 
 registration = (mimosaConfig, register) ->
-  register ['preBuild'], 'init', fubuImport.importAssets
+  mimosaConfig.log["info"] "setting up fubumvc"
+  scaffolding.setupFileSystemWithConfig mimosaConfig
+  register ['preBuild'], 'init', (mimosaConfig, options, next) ->
+    fubuImport.importAssets mimosaConfig, options, next
   register ['postClean'], 'init', fubuImport.cleanAssets
 
 registerCommand = (program, retrieveConfig) ->

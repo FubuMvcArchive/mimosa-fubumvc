@@ -2,6 +2,7 @@
 
 _ = require "lodash"
 path = require 'path'
+fs = require 'fs'
 
 exports.defaults = ->
   fubumvc:
@@ -40,7 +41,7 @@ exports.validate = (config, validators) ->
 
   {excludePaths, conventions, usePolling, interval, binaryInterval, baseDir} = fubumvc
 
-  unless !baseDir? or (baseDir? and path.existsSync baseDir)
+  unless !baseDir? or (baseDir? and fs.existsSync baseDir)
     errors.push "fubumvc.baseDir"
     return errors
 
