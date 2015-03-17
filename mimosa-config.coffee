@@ -4,6 +4,9 @@ exports.config =
     sourceDir: "src"
     compiledDir: "lib"
     javascriptDir: null
+  coffeescript:
+    options:
+      sourceMap: false
   jshint:
     rules:
       node: true
