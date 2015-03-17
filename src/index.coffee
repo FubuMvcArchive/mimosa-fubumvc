@@ -11,7 +11,7 @@ registration = (mimosaConfig, register) ->
     fubuImport.importAssets mimosaConfig, options, next
   register ['postClean'], 'init', fubuImport.cleanAssets
 
-registerCommand = (program, retrieveConfig) ->
+registerCommand = (program, logger, retrieveConfig) ->
   program
     .command('fubu:init')
     .description("bower.json and mimosa-config, 'coffee' flag for coffee")
@@ -27,5 +27,4 @@ module.exports =
   registration:    registration
   registerCommand: registerCommand
   defaults:        config.defaults
-  placeholder:     config.placeholder
   validate:        config.validate

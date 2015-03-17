@@ -12,26 +12,6 @@ exports.defaults = ->
     excludePaths: ["bin", "obj", /^\./]
     conventions: []
 
-exports.placeholder = ->
-  """
-  \t
-
-  # fubumvc:
-    # usePolling: true
-    # interval: 500
-    # binaryInterval: 1000
-    # excludePaths: ["bin", "obj", /^\./]
-    # conventions: [
-      # provide 0 or more conventions
-      # { 
-        # match: (file, ext, log) ->
-          # true #filename and extension, return true/false,
-        # transform: (file, path, log) ->
-          # file #filename and path module to do path.join, etc
-      # }
-    # ]
-  """
-
 exports.validate = (config, validators) ->
   errors = []
   {fubumvc} = config
