@@ -12,7 +12,7 @@ bliss = new Bliss
 cwd = process.cwd()
 
 setupFileSystem = (args, retrieveConfig) ->
-  retrieveConfig(false, (config) ->
+  retrieveConfig({ buildFirst: false }, (config) ->
     setupFileSystemWithConfig config, args
   )
 
@@ -22,7 +22,7 @@ setupFileSystemWithConfig = (config, args) ->
   initFiles(args, baseDir)
 
 resetFileSystem = (args, retrieveConfig) ->
-  retrieveConfig(false, (config) ->
+  retrieveConfig({ buildFirst: false }, (config) ->
     baseDir = if config.fubumvc then config.fubumvc.baseDir else cwd
     deleteFolders(baseDir)
     setupFileSystem args, retrieveConfig
