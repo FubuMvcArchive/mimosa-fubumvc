@@ -27,5 +27,4 @@ module.exports =
   registration:    registration
   registerCommand: registerCommand
   defaults:        config.defaults
-  placeholder:     config.placeholder
   validate:        config.validate
